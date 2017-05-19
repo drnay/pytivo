@@ -1,5 +1,13 @@
 # Initial version of this gitignore copied from: https://raw.githubusercontent.com/github/gitignore/master/Python.gitignore
 #
+
+# configuration file specific to this installation of pytivo
+pyTivo.conf
+
+# Executable utilities used by this installation of pytivo
+bin/*
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
