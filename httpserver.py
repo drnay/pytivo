@@ -5,6 +5,7 @@ import gzip
 import logging
 import mimetypes
 import os
+import sys
 import shutil
 import socket
 import time
@@ -17,15 +18,18 @@ from Cheetah.Template import Template
 import config
 from plugin import GetPlugin, EncodeUnicode
 
+# determine if application is a script file or frozen exe
 SCRIPTDIR = os.path.dirname(__file__)
+if getattr(sys, 'frozen', False):
+    SCRIPTDIR = sys._MEIPASS
 
 SERVER_INFO = """<?xml version="1.0" encoding="utf-8"?>
 <TiVoServer>
-<Version>1.6</Version>
+<Version>1.6.2</Version>
 <InternalName>pyTivo</InternalName>
-<InternalVersion>1.0</InternalVersion>
+<InternalVersion>pyTivo Desktop</InternalVersion>
 <Organization>pyTivo Developers</Organization>
-<Comment>http://pytivo.sf.net/</Comment>
+<Comment>http://www.pyTivoDesktop.com/</Comment>
 </TiVoServer>"""
 
 VIDEO_FORMATS = """<?xml version="1.0" encoding="utf-8"?>
@@ -54,8 +58,7 @@ class TivoHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
         self.stop = False
         self.restart = False
         self.logger = logging.getLogger('pyTivo')
-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
-                                           RequestHandlerClass)
+        BaseHTTPServer.HTTPServer.__init__(self, server_address, RequestHandlerClass)
         self.daemon_threads = True
 
     def add_container(self, name, settings):
@@ -87,8 +90,15 @@ class TivoHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.server_version = 'pyTivo/1.0'
         self.protocol_version = 'HTTP/1.1'
         self.sys_version = ''
-        BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, request,
-            client_address, server)
+
+        try:
+            BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, request, client_address, server)
+        except Exception, msg:
+            self.server.logger.info(msg)
+
+    def setup(self):
+        BaseHTTPServer.BaseHTTPRequestHandler.setup(self)
+        self.request.settimeout(180) # This allows pyTivo to die when user selects Stop Transfer on the TiVo
 
     def address_string(self):
         host, port = self.client_address[:2]
@@ -198,6 +208,13 @@ class TivoHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
                 self.send_xml(SERVER_INFO)
                 return
 
+            elif command in ('GetActiveTransferCount', 'GetTransferStatus'):
+                plugin = GetPlugin('video')
+                if hasattr(plugin, command):
+                    method = getattr(plugin, command)
+                    method(self, query)
+                    return True
+
             elif command in ('FlushServer', 'ResetServer'):
                 # Does nothing -- included for completeness
                 self.send_response(200)
@@ -273,6 +290,9 @@ class TivoHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         return False
 
     def log_message(self, format, *args):
+        if 'NoLog' in args[0]:
+            return
+
         self.server.logger.info("%s [%s] %s" % (self.address_string(),
                                 self.log_date_time_string(), format%args))
 
@@ -292,12 +312,16 @@ class TivoHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
         self.send_header('Expires', '0')
         if refresh:
             self.send_header('Refresh', refresh)
+        self.send_header('Access-Control-Allow-Origin', '*') #uncomment for angular development in browser
         self.end_headers()
         self.wfile.write(page)
         self.wfile.flush()
 
     def send_xml(self, page):
         self.send_fixed(page, 'text/xml')
+
+    def send_json(self, page):
+        self.send_fixed(page, 'application/json; charset=utf-8')
 
     def send_html(self, page, code=200, refresh=''):
         self.send_fixed(page, 'text/html; charset=utf-8', code, refresh)

@@ -9,22 +9,36 @@ import sys
 import uuid
 from ConfigParser import NoOptionError
 
+# determine if application is a script file or frozen exe
+SCRIPTDIR = os.path.dirname(__file__)
+if getattr(sys, 'frozen', False):
+    if sys.platform == 'darwin':
+        SCRIPTDIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(sys.executable))))) # on Mac pyTivo is inside a .app bundle
+    else:
+        SCRIPTDIR = os.path.dirname(sys.executable)
+
 class Bdict(dict):
     def getboolean(self, x):
         return self.get(x, 'False').lower() in ('1', 'yes', 'true', 'on')
 
-def init(argv):
+def init(argv, in_service=False):
     global tivos
     global guid
     global config_files
     global tivos_found
+    global running_in_service
 
     tivos = {}
     guid = uuid.uuid4()
     tivos_found = False
+    running_in_service = in_service
 
-    p = os.path.dirname(__file__)
-    config_files = ['/etc/pyTivo.conf', os.path.join(p, 'pyTivo.conf')]
+    if in_service:
+        config_files = [os.path.join(os.environ['ALLUSERSPROFILE'], 'pyTivo', 'pyTivo.conf')]
+    elif 'APPDATA' in os.environ:
+        config_files = [os.path.join(os.environ['APPDATA'], 'pyTivo', 'pyTivo.conf')]
+    else:
+        config_files = ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
 
     try:
         opts, _ = getopt.getopt(argv, 'c:e:', ['config=', 'extraconf='])
@@ -66,6 +80,9 @@ def reset():
             config.add_section(section)
 
 def write():
+    if not os.path.isdir(os.path.dirname(configs_found[-1])):
+        os.mkdir(os.path.dirname(configs_found[-1]))
+
     f = open(configs_found[-1], 'w')
     config.write(f)
     f.close()
@@ -83,6 +100,9 @@ def get_server(name, default=None):
 
 def getGUID():
     return str(guid)
+
+def isRunningInService():
+    return running_in_service
 
 def get_ip(tsn=None):
     try:
@@ -225,7 +245,7 @@ def get_bin(fname):
     else:
         fext = ''
 
-    for path in ([os.path.join(os.path.dirname(__file__), 'bin')] +
+    for path in ([os.path.join(SCRIPTDIR, 'bin')] +
                  os.getenv('PATH').split(os.pathsep)):
         fpath = os.path.join(path, fname + fext)
         if os.path.exists(fpath) and os.path.isfile(fpath):
