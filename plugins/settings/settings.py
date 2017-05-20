@@ -1,6 +1,9 @@
 import logging
 import os
-from urllib import quote
+import sys
+import json
+import subprocess
+from urllib import quote, unquote
 
 from Cheetah.Template import Template
 
@@ -8,7 +11,10 @@ import buildhelp
 import config
 from plugin import EncodeUnicode, Plugin
 
+# determine if application is a script file or frozen exe
 SCRIPTDIR = os.path.dirname(__file__)
+if getattr(sys, 'frozen', False):
+    SCRIPTDIR = os.path.join(sys._MEIPASS, 'plugins', 'settings')
 
 CLASS_NAME = 'Settings'
 
@@ -68,12 +74,8 @@ class Settings(Plugin):
         shares_data = []
         for section in config.config.sections():
             if not section.startswith(('_tivo_', 'Server')):
-                if (not (config.config.has_option(section, 'type')) or
-                    config.config.get(section, 'type').lower() not in
-                    ['settings', 'togo']):
-                    shares_data.append((section,
-                                        dict(config.config.items(section,
-                                                                 raw=True))))
+                if (not (config.config.has_option(section, 'type')) or config.config.get(section, 'type').lower() not in ['settings', 'togo']):
+                    shares_data.append((section, dict(config.config.items(section, raw=True))))
 
         t = Template(SETTINGS_TEMPLATE, filter=EncodeUnicode)
         t.mode = buildhelp.mode
@@ -142,4 +144,171 @@ class Settings(Plugin):
             config.config.add_section(query['new_Section'][0])
         config.write()
 
+        if getattr(sys, 'frozen', False):
+            if sys.platform == "win32":
+                tivomak_path = os.path.join(os.path.dirname(sys.executable), 'dshow', 'tivomak')
+                tmakcmd = [tivomak_path, '-set', config.config.get('Server', 'tivo_mak')]
+                subprocess.Popen(tmakcmd, shell=True)
+
         handler.redir(SETTINGS_MSG, 5)
+
+    def GetSettings(self, handler, query):
+        # Read config file new each time in case there was any outside edits
+        config.reset()
+
+        shares_data = []
+        for section in config.config.sections():
+            if not section.startswith(('_tivo_', 'Server')):
+                if (not (config.config.has_option(section, 'type')) or config.config.get(section, 'type').lower() not in ['settings', 'togo']):
+                    shares_data.append((section, dict(config.config.items(section, raw=True))))
+
+        json_config = {}
+        json_config['Server'] = {}
+        json_config['TiVos'] = {}
+        json_config['Shares'] = {}
+        for section in config.config.sections():
+            if section == 'Server':
+                for name, value in config.config.items(section):
+                    if name in {'debug', 'nosettings', 'togo_save_txt', 'togo_decode', 'togo_sortable_names', 'tivolibre_upload'}:
+                        try:
+                            json_config['Server'][name] = config.config.getboolean(section, name)
+                        except ValueError:
+                            json_config['Server'][name] = value
+                    else:
+                        json_config['Server'][name] = value
+            else:
+                if section.startswith('_tivo_'):
+                    json_config['TiVos'][section] = {}
+                    for name, value in config.config.items(section):
+                        if name in {'optres'}:
+                            try:
+                                json_config['TiVos'][section][name] = config.config.getboolean(section, name)
+                            except ValueError:
+                                json_config['TiVos'][section][name] = value
+                        else:
+                            json_config['TiVos'][section][name] = value
+                else:
+                    if (not (config.config.has_option(section, 'type')) or config.config.get(section, 'type').lower() not in ['settings', 'togo']):
+                        json_config['Shares'][section] = {}
+                        for name, value in config.config.items(section):
+                            if name in {'force_alpha', 'force_ffmpeg'}:
+                                try:
+                                    json_config['Shares'][section][name] = config.config.getboolean(section, name)
+                                except ValueError:
+                                    json_config['Shares'][section][name] = value
+                            else:
+                                json_config['Shares'][section][name] = value
+
+        handler.send_json(json.dumps(json_config))
+
+    def GetDriveList(self, handler, query):
+        import psutil
+        json_config = {}
+        if sys.platform == 'win32':
+            import win32api
+            for index, part in enumerate(psutil.disk_partitions(all=True)):
+                if part.fstype == '':
+                    continue
+
+                if 'dontbrowse' in part.opts:
+                    continue
+
+                json_config[index] = {}
+                json_config[index]['mountpoint'] = part.mountpoint
+
+                info = win32api.GetVolumeInformation(part.device)
+                if (info[0] == ''):
+                    json_config[index]['name'] = 'Local Disk'
+                else:
+                    json_config[index]['name'] = info[0]
+        elif sys.platform == 'darwin':
+            for index, fname in enumerate(os.listdir('/Volumes')):
+                json_config[index] = {}
+                json_config[index]['mountpoint'] = '/Volumes/' + fname
+                json_config[index]['name'] = fname
+        elif sys.platform == 'linux2':
+            print psutil.disk_partitions(all=True)
+            for index, part in enumerate(psutil.disk_partitions(all=True)):
+                if not part.fstype in ['msdos', 'ntfs', 'ext2', 'ext3', 'ext4']:
+                    continue
+
+                json_config[index] = {}
+                json_config[index]['mountpoint'] = part.mountpoint
+                json_config[index]['name'] = part.device
+
+
+        handler.send_json(json.dumps(json_config))
+
+    def has_hidden_attribute(self, filepath):
+        result = False
+        if sys.platform == 'win32':
+            import ctypes
+            try:
+                attrs = ctypes.windll.kernel32.GetFileAttributesW(unicode(filepath))
+                if attrs != -1:
+                    result = bool(attrs & 2)
+            except (AttributeError, AssertionError):
+                result = False
+        else:
+            if '/.' in filepath:
+                result = True
+
+        return result
+
+    def GetFileList(self, handler, query):
+        json_config = {}
+
+        basepath = '/'
+        if 'BasePath' in query:
+            basepath = unicode(unquote(query['BasePath'][0]), 'utf-8')
+
+        try:
+            for index, fname in enumerate(os.listdir(basepath)):
+                path = os.path.join(basepath, fname)
+                if self.has_hidden_attribute(path):
+                    continue
+
+                json_config[index] = {}
+                json_config[index]['path'] = path
+                if os.path.isdir(path):
+                    if sys.platform == 'darwin':
+                        if path.endswith('.app'):
+                            json_config[index]['isFolder'] = False
+                        else:
+                            json_config[index]['isFolder'] = True
+                    else:
+                        json_config[index]['isFolder'] = True
+                else:
+                    json_config[index]['isFolder'] = False
+        except:
+            print "Error"
+
+        handler.send_json(json.dumps(json_config))
+
+
+    def GetLogText(self, handler, query):
+        if config.isRunningInService():
+            programdataDir = os.path.join(os.environ['ALLUSERSPROFILE'], 'pyTivo')
+            if not os.path.exists(programdataDir):
+                os.makedirs(programdataDir)
+
+            logPath = os.path.join(programdataDir, 'log.txt')
+        else:
+            if 'APPDATA' in os.environ:
+                appdataDir = os.path.join(os.environ['APPDATA'], 'pyTivo')
+                if not os.path.exists(appdataDir):
+                    os.makedirs(appdataDir)
+
+                logPath = os.path.join(appdataDir, 'log.txt')
+            else:
+                if sys.platform == 'darwin':
+                    logDir = os.path.dirname(os.path.dirname(
+                        os.path.dirname(os.path.dirname(sys.executable))))  # pyTivo tray is inside a .app bundle
+                else:
+                    logDir = os.path.dirname(sys.executable)
+
+                logPath = os.path.join(logDir, 'log.txt')
+
+        with open(logPath, 'r') as logFile:
+            handler.send_html(logFile.read())
+
