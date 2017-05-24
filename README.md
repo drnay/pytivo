@@ -21,6 +21,10 @@ anything. Known to work on Linux, Mac OS X and Windows.
 Python - http://www.python.org/download/
 
 - You need python version >= 2.5 and < 3.0 i.e. get the latest version 2 Python.
+- You need the following python packages installed (use `pip install <package_name>`)
+    - `enum34`
+    - `netifaces`
+    - `pytz`
 
 pywin32 (only to install as a service) -
 http://sourceforge.net/project/showfiles.php?group_id=78018&package_id=79063
