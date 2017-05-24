@@ -37,8 +37,8 @@ def init(argv, in_service=False):
         config_files = [os.path.join(os.environ['ALLUSERSPROFILE'], 'pyTivo', 'pyTivo.conf')]
     elif 'APPDATA' in os.environ:
         config_files = [os.path.join(os.environ['APPDATA'], 'pyTivo', 'pyTivo.conf')]
-    else:
-        config_files = ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
+
+    config_files += ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
 
     try:
         opts, _ = getopt.getopt(argv, 'c:e:', ['config=', 'extraconf='])
