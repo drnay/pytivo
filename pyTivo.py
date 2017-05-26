@@ -7,7 +7,7 @@ import sys
 import time
 
 if sys.version_info[0] != 2 or sys.version_info[1] < 5:
-    print ('ERROR: pyTivo requires Python >= 2.5, < 3.0.\n')
+    print('ERROR: pyTivo requires Python >= 2.5, < 3.0.\n')
     sys.exit(1)
 
 try:
@@ -46,7 +46,7 @@ def setup(in_service=False):
     port = config.getPort()
 
     httpd = httpserver.TivoHTTPServer(('', int(port)),
-        httpserver.TivoHTTPHandler)
+                                      httpserver.TivoHTTPHandler)
 
     logger = logging.getLogger('pyTivo')
     logger.info('Last modified: ' + last_date())
@@ -78,7 +78,7 @@ def mainloop():
     httpd = setup()
     serve(httpd)
     httpd.beacon.stop()
-    return httpd.restart 
+    return httpd.restart
 
 if __name__ == '__main__':
     while mainloop():
