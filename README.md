@@ -66,3 +66,25 @@ Kevin R. Keegan, William McBrine, and Terry Mound ("wgw").
 [pyTivo FAQ]: <https://pytivo.sourceforge.io/wiki/index.php/Frequently_Asked_Questions> "pytivo FAQ"
 [pyTivo Forum]: <https://pytivo.sourceforge.io/forum/> "pyTivo Forum"
 [pyTiVo thread]: <http://www.tivocommunity.com/tivo-vb/showthread.php?t=328459> "pyTiVo thread on TiVo Community Forum"
+
+## Setting up development on Ubuntu 16.04 linux
+
+### python3
+
+From DigitalOcean's [page on setting up Python 3](https://www.digitalocean.com/community/tutorials/how-to-install-python-3-and-set-up-a-programming-environment-on-an-ubuntu-16-04-server):
+
+Install these apt packages:
+- python3-pip
+- python3-dev
+- python3-venv
+- pylint3
+- build-essential
+- libssl-dev
+- libffi-dev
+
+Create a Python 3 virtual environment for py3tivo (see DigitalOcean's page)
+
+Install these python packages (with pip):
+- zeroconf
+
+
