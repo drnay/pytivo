@@ -27,16 +27,17 @@ import time                       # used in the cache refresh code
 from random import randrange
 import imp
 import inspect
-import StringIO
+import io
 import traceback
 import pprint
 import cgi                # Used by .webInput() if the template is a CGI script.
 import types 
 from types import StringType, ClassType
+import collections
 try:
     from types import StringTypes
 except ImportError:
-    StringTypes = (types.StringType,types.UnicodeType)
+    StringTypes = (bytes,str)
 try:
     from types import BooleanType
     boolTypeAvailable = True
@@ -85,7 +86,7 @@ def hashList(l):
     return hash(tuple(hashedList))
 
 def hashDict(d):
-    items = d.items()
+    items = list(d.items())
     items.sort()
     hashedList = []
     for k, v in items:
@@ -146,7 +147,7 @@ class TemplatePreprocessor:
         """
         settings = self._settings
         if not source: # @@TR: this needs improving
-            if isinstance(file, (str, unicode)): # it's a filename.
+            if isinstance(file, str): # it's a filename.
                 f = open(file)
                 source = f.read()
                 f.close()
@@ -157,7 +158,7 @@ class TemplatePreprocessor:
         templateAPIClass = settings.templateAPIClass
         possibleKwArgs = [
             arg for arg in
-            inspect.getargs(templateAPIClass.compile.im_func.func_code)[0]
+            inspect.getargs(templateAPIClass.compile.__func__.__code__)[0]
             if arg not in ('klass', 'source', 'file',)]
 
         compileKwArgs = {}
@@ -587,13 +588,13 @@ class Template(Servlet):
         try:
             vt = VerifyType.VerifyType
             vtc = VerifyType.VerifyTypeClass
-            N = types.NoneType; S = types.StringType; U = types.UnicodeType
-            D = types.DictType; F = types.FileType
-            C = types.ClassType;  M = types.ModuleType
-            I = types.IntType
+            N = type(None); S = bytes; U = str
+            D = dict; F = types.FileType
+            C = type;  M = types.ModuleType
+            I = int
 
             if boolTypeAvailable:         
-                B = types.BooleanType
+                B = bool
             
             vt(source, 'source', [N,S,U], 'string or None')
             vt(file, 'file',[N,S,U,F], 'string, file-like object, or None')
@@ -655,7 +656,7 @@ class Template(Servlet):
                 cacheDirForModuleFiles, klass._CHEETAH_cacheDirForModuleFiles)
             vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N,S], 'string or None')
 
-        except TypeError, reason:
+        except TypeError as reason:
             raise TypeError(reason)
 
         ##################################################           
@@ -679,7 +680,7 @@ class Template(Servlet):
 
         cacheHash = None
         cacheItem = None
-        if source or isinstance(file, (str, unicode)):                
+        if source or isinstance(file, str):                
             compilerSettingsHash = None
             if compilerSettings:
                 compilerSettingsHash = hashDict(compilerSettings)
@@ -753,7 +754,7 @@ class Template(Servlet):
 
                 mod = new.module(uniqueModuleName)
                 if moduleGlobals:
-                    for k, v in moduleGlobals.items():
+                    for k, v in list(moduleGlobals.items()):
                         setattr(mod, k, v)
                 mod.__file__ = __file__
                 if __orig_file__ and os.path.exists(__orig_file__):
@@ -765,8 +766,8 @@ class Template(Servlet):
                 ##
                 try:
                     co = compile(generatedModuleCode, __file__, 'exec')
-                    exec co in mod.__dict__
-                except SyntaxError, e:
+                    exec(co, mod.__dict__)
+                except SyntaxError as e:
                     try:
                         parseError = genParserErrorFromPythonException(
                             source, file, generatedModuleCode, exception=e)
@@ -777,7 +778,7 @@ class Template(Servlet):
                         raise e
                     else:
                         raise parseError
-                except Exception, e:
+                except Exception as e:
                     updateLinecache(__file__, generatedModuleCode)
                     e.generatedModuleCode = generatedModuleCode
                     raise
@@ -845,7 +846,7 @@ class Template(Servlet):
         
         if hasattr(arg, 'preprocess'):
             return arg
-        elif callable(arg):
+        elif isinstance(arg, collections.Callable):
             class WrapperPreprocessor:
                 def preprocess(self, source, file):
                     return arg(source, file)
@@ -858,7 +859,7 @@ class Template(Servlet):
             if isinstance(arg, str) or isinstance(arg, (list, tuple)):
                 settings.tokens = arg
             elif isinstance(arg, dict):
-                for k, v in arg.items():
+                for k, v in list(arg.items()):
                     setattr(settings, k, v)   
             else:
                 settings = arg
@@ -907,7 +908,7 @@ class Template(Servlet):
             normalizeSearchList(settings.templateInitArgs['searchList']))
             
         if not hasattr(settings, 'outputTransformer'):
-            settings.outputTransformer = unicode
+            settings.outputTransformer = str
 
         if not hasattr(settings, 'templateAPIClass'):
             class PreprocessTemplateAPIClass(klass): pass
@@ -958,14 +959,14 @@ class Template(Servlet):
         for methodname in klass._CHEETAH_requiredCheetahMethods:
             if not hasattr(concreteTemplateClass, methodname):
                 method = getattr(Template, methodname)
-                newMethod = new.instancemethod(method.im_func, None, concreteTemplateClass)
+                newMethod = new.instancemethod(method.__func__, None, concreteTemplateClass)
                 #print methodname, method
                 setattr(concreteTemplateClass, methodname, newMethod)
 
         for classMethName in klass._CHEETAH_requiredCheetahClassMethods:
             if not hasattr(concreteTemplateClass, classMethName):
                 meth = getattr(klass, classMethName)
-                setattr(concreteTemplateClass, classMethName, classmethod(meth.im_func))
+                setattr(concreteTemplateClass, classMethName, classmethod(meth.__func__))
             
         for attrname in klass._CHEETAH_requiredCheetahClassAttributes:
             attrname = '_CHEETAH_'+attrname
@@ -1124,11 +1125,11 @@ class Template(Servlet):
         ##################################################           
         ## Verify argument keywords and types
 
-        S = types.StringType; U = types.UnicodeType
-        L = types.ListType;   T = types.TupleType
-        D = types.DictType;   F = types.FileType
-        C = types.ClassType;  M = types.ModuleType
-        N = types.NoneType
+        S = bytes; U = str
+        L = list;   T = tuple
+        D = dict;   F = types.FileType
+        C = type;  M = types.ModuleType
+        N = type(None)
         vt = VerifyType.VerifyType
         vtc = VerifyType.VerifyTypeClass
         try:
@@ -1145,7 +1146,7 @@ class Template(Servlet):
             if compilerSettings is not Unspecified:
                 vt(compilerSettings, 'compilerSettings', [D], 'dictionary')
 
-        except TypeError, reason:
+        except TypeError as reason:
             # Re-raise the exception here so that the traceback will end in
             # this function rather than in some utility function.
             raise TypeError(reason)
@@ -1491,7 +1492,7 @@ class Template(Servlet):
         """Called at runtime to handle #include directives.
         """
         _includeID = srcArg            
-        if not self._CHEETAH__cheetahIncludes.has_key(_includeID):
+        if _includeID not in self._CHEETAH__cheetahIncludes:
             if not raw:
                 if includeFrom == 'file':
                     source = None
@@ -1769,7 +1770,7 @@ class Template(Servlet):
         # 'dic = super(ThisClass, self).webInput(names, namesMulti, ...)'
         # and then the code below.
         if debug:
-           print "<PRE>\n" + pprint.pformat(dic) + "\n</PRE>\n\n"
+           print("<PRE>\n" + pprint.pformat(dic) + "\n</PRE>\n\n")
         self.searchList().insert(0, dic)
         return dic
 
@@ -1780,9 +1781,9 @@ def genParserErrorFromPythonException(source, file, generatedPyCode, exception):
 
     #print dir(exception)
     
-    filename = isinstance(file, (str, unicode)) and file or None
+    filename = isinstance(file, str) and file or None
 
-    sio = StringIO.StringIO()
+    sio = io.StringIO()
     traceback.print_exc(1, sio)
     formatedExc = sio.getvalue()
     

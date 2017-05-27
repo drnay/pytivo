@@ -48,7 +48,7 @@ import socket
 import time
 import types
 try:
-    import cPickle as pickle
+    import pickle as pickle
 except ImportError:
     import pickle
 
@@ -150,7 +150,7 @@ class Client:
             sys.stderr.write("MemCached: %s\n" % str)
 
     def _statlog(self, func):
-        if not self.stats.has_key(func):
+        if func not in self.stats:
             self.stats[func] = 1
         else:
             self.stats[func] += 1
@@ -169,7 +169,7 @@ class Client:
                 self.buckets.append(server)
 
     def _get_server(self, key):
-        if type(key) == types.TupleType:
+        if type(key) == tuple:
             serverhash = key[0]
             key = key[1]
         else:
@@ -205,7 +205,7 @@ class Client:
         try:
             server.send_cmd(cmd)
             server.expect("DELETED")
-        except socket.error, msg:
+        except socket.error as msg:
             server.mark_dead(msg[1])
             return 0
         return 1
@@ -257,7 +257,7 @@ class Client:
             server.send_cmd(cmd)
             line = server.readline()
             return int(line)
-        except socket.error, msg:
+        except socket.error as msg:
             server.mark_dead(msg[1])
             return None
 
@@ -303,12 +303,12 @@ class Client:
         self._statlog(cmd)
 
         flags = 0
-        if isinstance(val, types.StringTypes):
+        if isinstance(val, (str,)):
             pass
         elif isinstance(val, int):
             flags |= Client._FLAG_INTEGER
             val = "%d" % val
-        elif isinstance(val, long):
+        elif isinstance(val, int):
             flags |= Client._FLAG_LONG
             val = "%d" % val
         elif self._usePickle:
@@ -321,7 +321,7 @@ class Client:
         try:
             server.send_cmd(fullcmd)
             server.expect("STORED")
-        except socket.error, msg:
+        except socket.error as msg:
             server.mark_dead(msg[1])
             return 0
         return 1
@@ -344,8 +344,8 @@ class Client:
                 return None
             value = self._recv_value(server, flags, rlen)
             server.expect("END")
-        except (_Error, socket.error), msg:
-            if type(msg) is types.TupleType:
+        except (_Error, socket.error) as msg:
+            if type(msg) is tuple:
                 msg = msg[1]
             server.mark_dead(msg)
             return None
@@ -379,16 +379,16 @@ class Client:
             server, key = self._get_server(key)
             if not server:
                 continue
-            if not server_keys.has_key(server):
+            if server not in server_keys:
                 server_keys[server] = []
             server_keys[server].append(key)
 
         # send out all requests on each server before reading anything
         dead_servers = []
-        for server in server_keys.keys():
+        for server in list(server_keys.keys()):
             try:
                 server.send_cmd("get %s" % " ".join(server_keys[server]))
-            except socket.error, msg:
+            except socket.error as msg:
                 server.mark_dead(msg[1])
                 dead_servers.append(server)
 
@@ -397,7 +397,7 @@ class Client:
             del server_keys[server]
 
         retvals = {}
-        for server in server_keys.keys():
+        for server in list(server_keys.keys()):
             try:
                 line = server.readline()
                 while line and line != 'END':
@@ -407,7 +407,7 @@ class Client:
                         val = self._recv_value(server, flags, rlen)
                         retvals[rkey] = val
                     line = server.readline()
-            except (_Error, socket.error), msg:
+            except (_Error, socket.error) as msg:
                 server.mark_dead(msg)
         return retvals
 
@@ -437,7 +437,7 @@ class Client:
         elif flags & Client._FLAG_INTEGER:
             val = int(buf)
         elif flags & Client._FLAG_LONG:
-            val = long(buf)
+            val = int(buf)
         elif self._usePickle and flags & Client._FLAG_PICKLE:
             try:
                 val = pickle.loads(buf)
@@ -453,7 +453,7 @@ class _Host:
     _DEAD_RETRY = 30  # number of seconds before retrying a dead server.
 
     def __init__(self, host, debugfunc=None):
-        if isinstance(host, types.TupleType):
+        if isinstance(host, tuple):
             host = host[0]
             self.weight = host[1]
         else:
@@ -497,7 +497,7 @@ class _Host:
         # Python 2.3-ism:  s.settimeout(1)
         try:
             s.connect((self.ip, self.port))
-        except socket.error, msg:
+        except socket.error as msg:
             self.mark_dead("connect: %s" % msg[1])
             return None
         self.socket = s
@@ -556,27 +556,27 @@ def _doctest():
     return doctest.testmod(memcache, globs=globs)
 
 if __name__ == "__main__":
-    print "Testing docstrings..."
+    print("Testing docstrings...")
     _doctest()
-    print "Running tests:"
-    print
+    print("Running tests:")
+    print()
     #servers = ["127.0.0.1:11211", "127.0.0.1:11212"]
     servers = ["127.0.0.1:11211"]
     mc = Client(servers, debug=1)
 
     def to_s(val):
-        if not isinstance(val, types.StringTypes):
+        if not isinstance(val, (str,)):
             return "%s (%s)" % (val, type(val))
         return "%s" % val
     def test_setget(key, val):
-        print "Testing set/get {'%s': %s} ..." % (to_s(key), to_s(val)),
+        print("Testing set/get {'%s': %s} ..." % (to_s(key), to_s(val)), end=' ')
         mc.set(key, val)
         newval = mc.get(key)
         if newval == val:
-            print "OK"
+            print("OK")
             return 1
         else:
-            print "FAIL"
+            print("FAIL")
             return 0
 
     class FooStruct:
@@ -591,34 +591,34 @@ if __name__ == "__main__":
         
     test_setget("a_string", "some random string")
     test_setget("an_integer", 42)
-    if test_setget("long", long(1<<30)):
-        print "Testing delete ...",
+    if test_setget("long", int(1<<30)):
+        print("Testing delete ...", end=' ')
         if mc.delete("long"):
-            print "OK"
+            print("OK")
         else:
-            print "FAIL"
-    print "Testing get_multi ...",
-    print mc.get_multi(["a_string", "an_integer"])
+            print("FAIL")
+    print("Testing get_multi ...", end=' ')
+    print(mc.get_multi(["a_string", "an_integer"]))
 
-    print "Testing get(unknown value) ...",
-    print to_s(mc.get("unknown_value"))
+    print("Testing get(unknown value) ...", end=' ')
+    print(to_s(mc.get("unknown_value")))
 
     f = FooStruct()
     test_setget("foostruct", f)
 
-    print "Testing incr ...",
+    print("Testing incr ...", end=' ')
     x = mc.incr("an_integer", 1)
     if x == 43:
-        print "OK"
+        print("OK")
     else:
-        print "FAIL"
+        print("FAIL")
 
-    print "Testing decr ...",
+    print("Testing decr ...", end=' ')
     x = mc.decr("an_integer", 1)
     if x == 42:
-        print "OK"
+        print("OK")
     else:
-        print "FAIL"
+        print("FAIL")
 
 
 

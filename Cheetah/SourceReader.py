@@ -161,7 +161,7 @@ class SourceReader:
         self._posTobookmarkMap[self._pos] = name
 
     def hasBookmark(self, name):
-        return self._bookmarks.has_key(name)
+        return name in self._bookmarks
     
     def gotoBookmark(self, name):
         if not self.hasBookmark(name):
@@ -269,7 +269,7 @@ class SourceReader:
         return BOL == pos or src[BOL:pos].isspace()
 
     def matches(self, strOrRE):
-        if isinstance(strOrRE, (str, unicode)):
+        if isinstance(strOrRE, str):
             return self.startswith(strOrRE, pos=self.pos())
         else: # assume an re object
             return strOrRE.match(self.src(), self.pos())

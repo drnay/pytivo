@@ -30,7 +30,7 @@ def useOrRaise(thing, errmsg=''):
 
     Called by: Cheetah.Servlet.cgiImport()
     """
-    if type(thing) == types.ClassType and issubclass(thing, Exception):
+    if type(thing) == type and issubclass(thing, Exception):
         raise thing(errmsg)
     return thing
 
@@ -46,7 +46,7 @@ def checkKeywords(dic, legalKeywords, what='argument'):
     called by: Cheetah.Template.__init__()
     """
     # XXX legalKeywords could be a set when sets get added to Python.
-    for k in dic.keys(): # Can be dic.iterkeys() if Python >= 2.2.
+    for k in list(dic.keys()): # Can be dic.iterkeys() if Python >= 2.2.
         if k not in legalKeywords: 
             raise TypeError("'%s' is not a valid %s" % (k, what))
 

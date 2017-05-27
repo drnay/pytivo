@@ -27,7 +27,7 @@ import types
 import time
 import random
 import warnings
-import __builtin__
+import builtins
 import copy
 
 from Cheetah.Version import Version, VersionTuple
@@ -1181,14 +1181,14 @@ class ClassCompiler(GenUtils):
         from the methods of this class!!! or you will be assigning to attributes
         of this object instead."""
         
-        if self.__dict__.has_key(name):
+        if name in self.__dict__:
             return self.__dict__[name]
         elif hasattr(self.__class__, name):
             return getattr(self.__class__, name)
         elif self._activeMethodsList and hasattr(self._activeMethodsList[-1], name):
             return getattr(self._activeMethodsList[-1], name)
         else:
-            raise AttributeError, name
+            raise AttributeError(name)
 
     def _setupState(self):
         self._classDef = None
@@ -1374,7 +1374,7 @@ class ClassCompiler(GenUtils):
             'super(%(className)s, self).%(methodName)s(%(argString)s)'%locals())
 
     def addErrorCatcherCall(self, codeChunk, rawCode='', lineCol=''):
-        if self._placeholderToErrorCatcherMap.has_key(rawCode):
+        if rawCode in self._placeholderToErrorCatcherMap:
             methodName = self._placeholderToErrorCatcherMap[rawCode]
             if not self.setting('outputRowColComments'):
                 self._methodsIndex[methodName].addMethDocString(
@@ -1552,7 +1552,7 @@ class ModuleCompiler(SettingsManager, GenUtils):
         
         if source and file:
             raise TypeError("Cannot compile from a source string AND file.")
-        elif isinstance(file, (str, unicode)): # it's a filename.
+        elif isinstance(file, str): # it's a filename.
             f = open(file) # Raises IOError.
             source = f.read()
             f.close()
@@ -1567,7 +1567,7 @@ class ModuleCompiler(SettingsManager, GenUtils):
             self._fileDirName, self._fileBaseName = os.path.split(self._filePath)
             self._fileBaseNameRoot, self._fileBaseNameExt = os.path.splitext(self._fileBaseName)
 
-        if not isinstance(source, (str,unicode)):
+        if not isinstance(source, str):
             source = str(source)
             # by converting to string here we allow objects such as other Templates
             # to be passed in
@@ -1587,7 +1587,7 @@ class ModuleCompiler(SettingsManager, GenUtils):
                 source = unicodeDirectiveRE.sub('', source)
                 if isinstance(source, str):
                     encoding = unicodeMatch.group(1) or 'ascii'
-                    source = unicode(source, encoding)
+                    source = str(source, encoding)
                 
                 #print encoding
 
@@ -1605,14 +1605,14 @@ class ModuleCompiler(SettingsManager, GenUtils):
         from the methods of this class!!! or you will be assigning to attributes
         of this object instead.
         """
-        if self.__dict__.has_key(name):
+        if name in self.__dict__:
             return self.__dict__[name]
         elif hasattr(self.__class__, name):
             return getattr(self.__class__, name)
         elif self._activeClassesList and hasattr(self._activeClassesList[-1], name):
             return getattr(self._activeClassesList[-1], name)
         else:
-            raise AttributeError, name
+            raise AttributeError(name)
 
     def _initializeSettings(self):
         self.updateSettings(copy.deepcopy(DEFAULT_COMPILER_SETTINGS))
@@ -1972,7 +1972,7 @@ if not hasattr(%(mainClassName)s, '_initCheetahAttributes'):
     def specialVars(self):
         chunks = []
         theVars = self._specialVars
-        keys = theVars.keys()
+        keys = list(theVars.keys())
         keys.sort()
         for key in keys:
             chunks.append(key + ' = ' + repr(theVars[key])  )

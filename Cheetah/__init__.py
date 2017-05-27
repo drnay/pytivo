@@ -24,4 +24,4 @@ Subscribe at http://lists.sourceforge.net/lists/listinfo/cheetahtemplate-discuss
 __author__ = "Tavis Rudd <tavis@damnsimple.com>"
 __revision__ = "$Revision: 1.10 $"[11:-2]
 
-from Version import Version
+from .Version import Version

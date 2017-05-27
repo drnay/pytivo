@@ -81,7 +81,7 @@ class ID3(DictProxy, mutagen.Metadata):
                 raise ValueError('Requested bytes (%s) less than zero' % size)
             if size > self.__filesize:
                 raise EOFError('Requested %#x of %#x (%s)' % 
-                        (long(size), long(self.__filesize), self.filename))
+                        (int(size), int(self.__filesize), self.filename))
         except AttributeError: pass
         data = self.__fileobj.read(size)
         if len(data) != size: raise EOFError
@@ -117,18 +117,18 @@ class ID3(DictProxy, mutagen.Metadata):
                 self.size = 0
                 raise ID3NoHeaderError("%s: too small (%d bytes)" %(
                     filename, self.__filesize))
-            except (ID3NoHeaderError, ID3UnsupportedVersionError), err:
+            except (ID3NoHeaderError, ID3UnsupportedVersionError) as err:
                 self.size = 0
                 import sys
                 stack = sys.exc_info()[2]
                 try: self.__fileobj.seek(-128, 2)
-                except EnvironmentError: raise err, None, stack
+                except EnvironmentError: raise err.with_traceback(stack)
                 else:
                     frames = ParseID3v1(self.__fileobj.read(128))
                     if frames is not None:
                         self.version = (1, 1)
-                        map(self.add, frames.values())
-                    else: raise err, None, stack
+                        list(map(self.add, list(frames.values())))
+                    else: raise err.with_traceback(stack)
             else:
                 frames = self.__known_frames
                 if frames is None:
@@ -161,14 +161,14 @@ class ID3(DictProxy, mutagen.Metadata):
         if key in self: return [self[key]]
         else:
             key = key + ":"
-            return [v for s,v in self.items() if s.startswith(key)]
+            return [v for s,v in list(self.items()) if s.startswith(key)]
 
     def delall(self, key):
         """Delete all tags of a given kind; see getall."""
         if key in self: del(self[key])
         else:
             key = key + ":"
-            for k in filter(lambda s: s.startswith(key), self.keys()):
+            for k in [s for s in list(self.keys()) if s.startswith(key)]:
                 del(self[k])
 
     def setall(self, key, values):
@@ -186,7 +186,7 @@ class ID3(DictProxy, mutagen.Metadata):
         However, ID3 frames can have multiple keys:
             POPM=user@example.org=3 128/255
         """
-        frames = list(map(Frame.pprint, self.values()))
+        frames = list(map(Frame.pprint, list(self.values())))
         frames.sort()
         return "\n".join(frames)
 
@@ -360,9 +360,9 @@ class ID3(DictProxy, mutagen.Metadata):
 
         # Sort frames by 'importance'
         order = ["TIT2", "TPE1", "TRCK", "TALB", "TPOS", "TDRC", "TCON"]
-        order = dict(zip(order, range(len(order))))
+        order = dict(list(zip(order, list(range(len(order))))))
         last = len(order)
-        frames = self.items()
+        frames = list(self.items())
         frames.sort(lambda a, b: cmp(order.get(a[0][:4], last),
                                      order.get(b[0][:4], last)))
 
@@ -372,7 +372,7 @@ class ID3(DictProxy, mutagen.Metadata):
         if not framedata:
             try:
                 self.delete(filename)
-            except EnvironmentError, err:
+            except EnvironmentError as err:
                 from errno import ENOENT
                 if err.errno != ENOENT: raise
             return
@@ -382,7 +382,7 @@ class ID3(DictProxy, mutagen.Metadata):
 
         if filename is None: filename = self.filename
         try: f = open(filename, 'rb+')
-        except IOError, err:
+        except IOError as err:
             from errno import ENOENT
             if err.errno != ENOENT: raise
             f = open(filename, 'ab') # create, then reopen
@@ -410,7 +410,7 @@ class ID3(DictProxy, mutagen.Metadata):
 
             try:
                 f.seek(-128, 2)
-            except IOError, err:
+            except IOError as err:
                 # If the file is too small, that's OK - it just means
                 # we're certain it doesn't have a v1 tag.
                 from errno import EINVAL
@@ -570,7 +570,7 @@ class BitPaddedInt(int):
     def __new__(cls, value, bits=7, bigendian=True):
         "Strips 8-bits bits out of every byte"
         mask = (1<<(bits))-1
-        if isinstance(value, (int, long)):
+        if isinstance(value, int):
             bytes = []
             while value:
                 bytes.append(value & ((1<<bits)-1))
@@ -579,10 +579,10 @@ class BitPaddedInt(int):
             bytes = [ord(byte) & mask for byte in value]
             if bigendian: bytes.reverse()
         numeric_value = 0
-        for shift, byte in zip(range(0, len(bytes)*bits, bits), bytes):
+        for shift, byte in zip(list(range(0, len(bytes)*bits, bits)), bytes):
             numeric_value += byte << shift
-        if isinstance(numeric_value, long):
-            self = long.__new__(BitPaddedLong, numeric_value)
+        if isinstance(numeric_value, int):
+            self = int.__new__(BitPaddedLong, numeric_value)
         else:
             self = int.__new__(BitPaddedInt, numeric_value)
         self.bits = bits
@@ -601,7 +601,7 @@ class BitPaddedInt(int):
         # PCNT and POPM use growing integers of at least 4 bytes as counters.
         if width == -1: width = max(4, len(bytes))
         if len(bytes) > width:
-            raise ValueError, 'Value too wide (%d bytes)' % len(bytes)
+            raise ValueError('Value too wide (%d bytes)' % len(bytes))
         else: bytes.extend([0] * (width-len(bytes)))
         if bigendian: bytes.reverse()
         return ''.join(map(chr, bytes))
@@ -684,7 +684,7 @@ class EncodingSpec(ByteSpec):
     def validate(self, frame, value):
         if 0 <= value <= 3: return value
         if value is None: return None
-        raise ValueError, 'Invalid Encoding: %r' % value
+        raise ValueError('Invalid Encoding: %r' % value)
 
 class StringSpec(Spec):
     def __init__(self, name, length):
@@ -696,8 +696,8 @@ class StringSpec(Spec):
         else: return (str(value) + '\x00' * s.len)[:s.len]
     def validate(s, frame, value):
         if value is None: return None
-        if isinstance(value, basestring) and len(value) == s.len: return value
-        raise ValueError, 'Invalid StringSpec[%d] data: %r' % (s.len, value)
+        if isinstance(value, str) and len(value) == s.len: return value
+        raise ValueError('Invalid StringSpec[%d] data: %r' % (s.len, value))
 
 class BinaryDataSpec(Spec):
     def read(self, frame, data): return data, ''
@@ -726,14 +726,14 @@ class EncodedTextSpec(Spec):
                     data, ret = data[0:offset], data[offset+2:]; break
             except ValueError: pass
 
-        if len(data) < len(term): return u'', ret
+        if len(data) < len(term): return '', ret
         return data.decode(enc), ret
 
     def write(self, frame, value):
         enc, term = self._encodings[frame.encoding]
         return value.encode(enc) + term
 
-    def validate(self, frame, value): return unicode(value)
+    def validate(self, frame, value): return str(value)
 
 class MultiSpec(Spec):
     def __init__(self, name, *specs, **kw):
@@ -765,7 +765,7 @@ class MultiSpec(Spec):
 
     def validate(self, frame, value):
         if value is None: return []
-        if self.sep and isinstance(value, basestring):
+        if self.sep and isinstance(value, str):
             value = value.split(self.sep)
         if isinstance(value, list):
             if len(self.specs) == 1:
@@ -774,7 +774,7 @@ class MultiSpec(Spec):
                 return [ 
                     [s.validate(frame, v) for (v,s) in zip(val, self.specs)]
                     for val in value ]
-        raise ValueError, 'Invalid MultiSpec data: %r' % value
+        raise ValueError('Invalid MultiSpec data: %r' % value)
 
 class EncodedNumericTextSpec(EncodedTextSpec): pass
 class EncodedNumericPartTextSpec(EncodedTextSpec): pass
@@ -788,7 +788,7 @@ class Latin1TextSpec(EncodedTextSpec):
     def write(self, data, value):
         return value.encode('latin1') + '\x00'
 
-    def validate(self, frame, value): return unicode(value)
+    def validate(self, frame, value): return str(value)
 
 class ID3TimeStamp(object):
     """A time stamp in ID3v2 format.
@@ -812,9 +812,9 @@ class ID3TimeStamp(object):
         parts = [self.year, self.month, self.day,
                 self.hour, self.minute, self.second]
         pieces = []
-        for i, part in enumerate(iter(iter(parts).next, None)):
+        for i, part in enumerate(iter(iter(parts).__next__, None)):
             pieces.append(self.__formats[i]%part + self.__seps[i])
-        return u''.join(pieces)[:-1]
+        return ''.join(pieces)[:-1]
 
     def set_text(self, text, splitre=re.compile('[-T:/.]|\s+')):
         year, month, day, hour, minute, second = \
@@ -843,11 +843,11 @@ class TimeStampSpec(EncodedTextSpec):
 
     def validate(self, frame, value):
         try: return ID3TimeStamp(value)
-        except TypeError: raise ValueError, "Invalid ID3TimeStamp: %r" % value
+        except TypeError: raise ValueError("Invalid ID3TimeStamp: %r" % value)
 
 class ChannelSpec(ByteSpec):
     (OTHER, MASTER, FRONTRIGHT, FRONTLEFT, BACKRIGHT, BACKLEFT, FRONTCENTRE,
-     BACKCENTRE, SUBWOOFER) = range(9)
+     BACKCENTRE, SUBWOOFER) = list(range(9))
 
 class VolumeAdjustmentSpec(Spec):
     def read(self, frame, data):
@@ -931,7 +931,7 @@ class VolumeAdjustmentsSpec(Spec):
             freq /= 2.0
             adj /= 512.0
             adjustments[freq] = adj
-        adjustments = adjustments.items()
+        adjustments = list(adjustments.items())
         adjustments.sort()
         return adjustments, data
 
@@ -1064,21 +1064,21 @@ class Frame(object):
                 data = data[4:]
             if tflags & Frame.FLAG24_UNSYNCH or id3.f_unsynch:
                 try: data = unsynch.decode(data)
-                except ValueError, err:
+                except ValueError as err:
                     if id3.PEDANTIC:
-                        raise ID3BadUnsynchData, '%s: %r' % (err, data)
+                        raise ID3BadUnsynchData('%s: %r' % (err, data))
             if tflags & Frame.FLAG24_ENCRYPT:
                 raise ID3EncryptionUnsupportedError
             if tflags & Frame.FLAG24_COMPRESS:
                 try: data = data.decode('zlib')
-                except zlibError, err:
+                except zlibError as err:
                     # the initial mutagen that went out with QL 0.12 did not
                     # write the 4 bytes of uncompressed size. Compensate.
                     data = datalen_bytes + data
                     try: data = data.decode('zlib')
-                    except zlibError, err:
+                    except zlibError as err:
                         if id3.PEDANTIC:
-                            raise ID3BadCompressedData, '%s: %r' % (err, data)
+                            raise ID3BadCompressedData('%s: %r' % (err, data))
 
         elif (2,3,0) <= id3.version:
             if tflags & Frame.FLAG23_COMPRESS:
@@ -1088,9 +1088,9 @@ class Frame(object):
                 raise ID3EncryptionUnsupportedError
             if tflags & Frame.FLAG23_COMPRESS:
                 try: data = data.decode('zlib')
-                except zlibError, err:
+                except zlibError as err:
                     if id3.PEDANTIC:
-                        raise ID3BadCompressedData, '%s: %r' % (err, data)
+                        raise ID3BadCompressedData('%s: %r' % (err, data))
 
         frame = cls()
         frame._rawdata = data
@@ -1169,12 +1169,12 @@ class TextFrame(Frame):
     """
 
     _framespec = [ EncodingSpec('encoding'),
-        MultiSpec('text', EncodedTextSpec('text'), sep=u'\u0000') ]
+        MultiSpec('text', EncodedTextSpec('text'), sep='\u0000') ]
     def __str__(self): return self.__unicode__().encode('utf-8')
-    def __unicode__(self): return u'\u0000'.join(self.text)
+    def __unicode__(self): return '\u0000'.join(self.text)
     def __eq__(self, other):
         if isinstance(other, str): return str(self) == other
-        elif isinstance(other, unicode): return unicode(self) == other
+        elif isinstance(other, str): return str(self) == other
         return self.text == other
     __hash__ = Frame.__hash__
     def __getitem__(self, item): return self.text[item]
@@ -1192,7 +1192,7 @@ class NumericTextFrame(TextFrame):
     """
 
     _framespec = [ EncodingSpec('encoding'),
-        MultiSpec('text', EncodedNumericTextSpec('text'), sep=u'\u0000') ]
+        MultiSpec('text', EncodedNumericTextSpec('text'), sep='\u0000') ]
 
     def __pos__(self):
         """Return the numerical value of the string."""
@@ -1208,7 +1208,7 @@ class NumericPartTextFrame(TextFrame):
     """
 
     _framespec = [ EncodingSpec('encoding'),
-        MultiSpec('text', EncodedNumericPartTextSpec('text'), sep=u'\u0000') ]
+        MultiSpec('text', EncodedNumericPartTextSpec('text'), sep='\u0000') ]
     def __pos__(self):
         return int(self.text[0].split("/")[0])
 
@@ -1220,7 +1220,7 @@ class TimeStampTextFrame(TextFrame):
     """
 
     _framespec = [ EncodingSpec('encoding'),
-        MultiSpec('text', TimeStampSpec('stamp'), sep=u',') ]
+        MultiSpec('text', TimeStampSpec('stamp'), sep=',') ]
     def __str__(self): return self.__unicode__().encode('utf-8')
     def __unicode__(self): return ','.join([stamp.text for stamp in self.text])
     def _pprint(self):
@@ -1268,9 +1268,9 @@ class TCON(TextFrame):
         for value in self.text:
             if value.isdigit():
                 try: genres.append(self.GENRES[int(value)])
-                except IndexError: genres.append(u"Unknown")
-            elif value == "CR": genres.append(u"Cover")
-            elif value == "RX": genres.append(u"Remix")
+                except IndexError: genres.append("Unknown")
+            elif value == "CR": genres.append("Cover")
+            elif value == "RX": genres.append("Remix")
             elif value:
                 newgenres = []
                 genreid, dummy, genrename = genre_re.match(value).groups()
@@ -1278,11 +1278,11 @@ class TCON(TextFrame):
                 if genreid:
                     for gid in genreid[1:-1].split(")("):
                         if gid.isdigit() and int(gid) < len(self.GENRES):
-                            gid = unicode(self.GENRES[int(gid)])
+                            gid = str(self.GENRES[int(gid)])
                             newgenres.append(gid)
-                        elif gid == "CR": newgenres.append(u"Cover")
-                        elif gid == "RX": newgenres.append(u"Remix")
-                        else: newgenres.append(u"Unknown")
+                        elif gid == "CR": newgenres.append("Cover")
+                        elif gid == "RX": newgenres.append("Remix")
+                        else: newgenres.append("Unknown")
 
                 if genrename:
                     # "Unescaping" the first parenthesis
@@ -1294,8 +1294,8 @@ class TCON(TextFrame):
         return genres
 
     def __set_genres(self, genres):
-        if isinstance(genres, basestring): genres = [genres]
-        self.text = map(self.__decode, genres)
+        if isinstance(genres, str): genres = [genres]
+        self.text = list(map(self.__decode, genres))
 
     def __decode(self, value):
         if isinstance(value, str):
@@ -1366,7 +1366,7 @@ class TXXX(TextFrame):
     the same). Many taggers use this frame to store freeform keys.
     """
     _framespec = [ EncodingSpec('encoding'), EncodedTextSpec('desc'),
-        MultiSpec('text', EncodedTextSpec('text'), sep=u'\u0000') ]
+        MultiSpec('text', EncodedTextSpec('text'), sep='\u0000') ]
     HashKey = property(lambda s: '%s:%s' % (s.FrameID, s.desc))
     def _pprint(self): return "%s=%s" % (self.desc, " / ".join(self.text))
 
@@ -1488,7 +1488,7 @@ class COMM(TextFrame):
     """
     _framespec = [ EncodingSpec('encoding'), StringSpec('lang', 3),
         EncodedTextSpec('desc'),
-        MultiSpec('text', EncodedTextSpec('text'), sep=u'\u0000') ]
+        MultiSpec('text', EncodedTextSpec('text'), sep='\u0000') ]
     HashKey = property(lambda s: '%s:%s:%r' % (s.FrameID, s.desc, s.lang))
     def _pprint(self): return "%s=%r=%s" % (
         self.desc, self.lang, " / ".join(self.text))
@@ -1590,7 +1590,7 @@ class PCNT(Frame):
     def __eq__(self, other): return self.count == other
     __hash__ = Frame.__hash__
     def __pos__(self): return self.count
-    def _pprint(self): return unicode(self.count)
+    def _pprint(self): return str(self.count)
 
 class POPM(FrameOpt):
     """Popularimeter.
@@ -1835,7 +1835,7 @@ class ASPI(Frame):
     def __eq__(self, other): return self.Fi == other
     __hash__ = Frame.__hash__
 
-Frames = dict([(k,v) for (k,v) in globals().items()
+Frames = dict([(k,v) for (k,v) in list(globals().items())
         if len(k)==4 and isinstance(v, type) and issubclass(v, Frame)])
 """All supported ID3v2 frames, keyed by frame name."""
 del(k); del(v)
@@ -1929,7 +1929,7 @@ class LNK(LINK):
     _framespec = [ StringSpec('frameid', 3), Latin1TextSpec('url') ]
     _optionalspec = [ BinaryDataSpec('data') ]
 
-Frames_2_2 = dict([(k,v) for (k,v) in globals().items()
+Frames_2_2 = dict([(k,v) for (k,v) in list(globals().items())
         if len(k)==3 and isinstance(v, type) and issubclass(v, Frame)])
 
 # support open(filename) as interface
@@ -1965,8 +1965,8 @@ def ParseID3v1(string):
     def fix(string):
         return string.split("\x00")[0].strip().decode('latin1')
 
-    title, artist, album, year, comment = map(
-        fix, [title, artist, album, year, comment])
+    title, artist, album, year, comment = list(map(
+        fix, [title, artist, album, year, comment]))
 
     frames = {}
     if title: frames["TIT2"] = TIT2(encoding=0, text=title)
@@ -1987,8 +1987,8 @@ def MakeID3v1(id3):
 
     v1 = {}
 
-    for v2id, name in {"TIT2": "title", "TPE1": "artist",
-                       "TALB": "album"}.items():
+    for v2id, name in list({"TIT2": "title", "TPE1": "artist",
+                       "TALB": "album"}.items()):
         if v2id in id3:
             text = id3[v2id].text[0].encode('latin1', 'replace')[:30]
         else:

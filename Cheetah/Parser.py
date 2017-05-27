@@ -34,6 +34,7 @@ from Cheetah import Filters
 from Cheetah import ErrorCatchers
 from Cheetah.Unspecified import Unspecified
 from Cheetah.Macros.I18n import I18n
+import collections
 
 # re tools
 _regexCache = {}
@@ -52,8 +53,8 @@ def escapeRegexChars(txt,
 def group(*choices): return '(' + '|'.join(choices) + ')'
 def nongroup(*choices): return '(?:' + '|'.join(choices) + ')'
 def namedGroup(name, *choices): return '(P:<' + name +'>' + '|'.join(choices) + ')'
-def any(*choices): return apply(group, choices) + '*'
-def maybe(*choices): return apply(group, choices) + '?'
+def any(*choices): return group(*choices) + '*'
+def maybe(*choices): return group(*choices) + '?'
 
 ##################################################
 ## CONSTANTS & GLOBALS ##
@@ -135,7 +136,7 @@ def makeTripleQuoteRe(start, end):
     end = escapeRegexChars(end)
     return re.compile(r'(?:' + start + r').*?' + r'(?:' + end + r')', re.DOTALL)
 
-for start, end in tripleQuotedStringPairs.items():
+for start, end in list(tripleQuotedStringPairs.items()):
     tripleQuotedStringREs[start] = makeTripleQuoteRe(start, end)
 
 WS = r'[ \f\t]*'  
@@ -337,7 +338,7 @@ class ArgList:
         self.argNames.append( name )
         self.defVals.append( None )
 
-    def next(self):
+    def __next__(self):
         self.i += 1
 
     def addToDefVal(self, token):
@@ -665,7 +666,7 @@ class _LowLevelParser(SourceReader):
 
     def matchDirectiveName(self, directiveNameChars=identchars+'0123456789-@'):
         startPos = self.pos()
-        possibleMatches = self._directiveNamesAndParsers.keys()
+        possibleMatches = list(self._directiveNamesAndParsers.keys())
         name = ''
         match = None
 
@@ -1013,7 +1014,7 @@ class _LowLevelParser(SourceReader):
                 onDefVal = True
                 self.advance()
             elif c == ",":
-                argList.next()
+                next(argList)
                 onDefVal = False
                 self.advance()
             elif self.startswith(self.cheetahVarStartToken) and not onDefVal:
@@ -1315,7 +1316,7 @@ class _HighLevelParser(_LowLevelParser):
         """Cleanup to remove any possible reference cycles
         """
         self._macros.clear()
-        for macroname, macroDetails in self._macroDetails.items():
+        for macroname, macroDetails in list(self._macroDetails.items()):
             macroDetails.template.shutdown()
             del macroDetails.template
         self._macroDetails.clear()
@@ -1326,11 +1327,11 @@ class _HighLevelParser(_LowLevelParser):
     
     def _initDirectives(self):
         def normalizeParserVal(val):
-            if isinstance(val, (str,unicode)):
+            if isinstance(val, str):
                 handler = getattr(self, val)
             elif type(val) in (ClassType, TypeType):
                 handler = val(self)
-            elif callable(val):
+            elif isinstance(val, collections.Callable):
                 handler = val
             elif val is None:
                 handler = val
@@ -1349,13 +1350,13 @@ class _HighLevelParser(_LowLevelParser):
         _endDirectiveNamesAndHandlers.update(customNamesAndHandlers)        
         
         self._directiveNamesAndParsers = {}
-        for name, val in _directiveNamesAndParsers.items():
+        for name, val in list(_directiveNamesAndParsers.items()):
             if val in (False, 0):
                 continue
             self._directiveNamesAndParsers[name] = normalizeParserVal(val)
 
         self._endDirectiveNamesAndHandlers = {}        
-        for name, val in _endDirectiveNamesAndHandlers.items():
+        for name, val in list(_endDirectiveNamesAndHandlers.items()):
             if val in (False, 0):
                 continue
             self._endDirectiveNamesAndHandlers[name] = normalizeHandlerVal(val)
@@ -1378,7 +1379,7 @@ class _HighLevelParser(_LowLevelParser):
         macroDirectives['i18n'] = I18n
 
 
-        for macroName, callback in macroDirectives.items():
+        for macroName, callback in list(macroDirectives.items()):
             if type(callback) in (ClassType, TypeType):
                 callback = callback(parser=self)
             assert callback                
@@ -1711,7 +1712,7 @@ class _HighLevelParser(_LowLevelParser):
         self.getWhiteSpace()
         pos = self.pos()
         directiveName = False
-        for key in self._endDirectiveNamesAndHandlers.keys():
+        for key in list(self._endDirectiveNamesAndHandlers.keys()):
             if self.find(key, pos) == pos:
                 directiveName = key
                 break
@@ -1819,12 +1820,12 @@ class _HighLevelParser(_LowLevelParser):
             self._compiler.setCompilerSetting(settingName, valueExpr)
         except:
             out = sys.stderr
-            print >> out, 'An error occurred while processing the following #compiler directive.'
-            print >> out, '-'*80
-            print >> out, self[startPos:endPos]
-            print >> out, '-'*80
-            print >> out, 'Please check the syntax of these settings.'
-            print >> out, 'A full Python exception traceback follows.'
+            print('An error occurred while processing the following #compiler directive.', file=out)
+            print('-'*80, file=out)
+            print(self[startPos:endPos], file=out)
+            print('-'*80, file=out)
+            print('Please check the syntax of these settings.', file=out)
+            print('A full Python exception traceback follows.', file=out)
             raise
 
 
@@ -1855,12 +1856,12 @@ class _HighLevelParser(_LowLevelParser):
             self._compiler.setCompilerSettings(keywords=keywords, settingsStr=settingsStr)
         except:
             out = sys.stderr
-            print >> out, 'An error occurred while processing the following compiler settings.'
-            print >> out, '-'*80
-            print >> out, settingsStr.strip()
-            print >> out, '-'*80
-            print >> out, 'Please check the syntax of these settings.'
-            print >> out, 'A full Python exception traceback follows.'
+            print('An error occurred while processing the following compiler settings.', file=out)
+            print('-'*80, file=out)
+            print(settingsStr.strip(), file=out)
+            print('-'*80, file=out)
+            print('Please check the syntax of these settings.', file=out)
+            print('A full Python exception traceback follows.', file=out)
             raise
 
     def eatAttr(self):
@@ -2210,7 +2211,7 @@ class _HighLevelParser(_LowLevelParser):
         else:
             argsList=[]
 
-        assert not self._directiveNamesAndParsers.has_key(macroName)
+        assert macroName not in self._directiveNamesAndParsers
         argsList.insert(0, ('src',None))
         argsList.append(('parser','None'))
         argsList.append(('macros','None'))
@@ -2308,18 +2309,18 @@ class _HighLevelParser(_LowLevelParser):
         else:
             def getArgs(*pargs, **kws):
                 return pargs, kws
-            exec 'positionalArgs, kwArgs = getArgs(%(args)s)'%locals()
+            exec('positionalArgs, kwArgs = getArgs(%(args)s)'%locals())
 
-        assert not kwArgs.has_key('src')
+        assert 'src' not in kwArgs
         kwArgs['src'] = srcBlock
 
         if type(macro)==new.instancemethod:
-            co = macro.im_func.func_code
+            co = macro.__func__.__code__
         elif (hasattr(macro, '__call__')
               and hasattr(macro.__call__, 'im_func')):
-            co = macro.__call__.im_func.func_code
+            co = macro.__call__.__func__.__code__
         else:
-            co = macro.func_code
+            co = macro.__code__
         availableKwArgs = inspect.getargs(co)[0]
         
         if 'parser' in availableKwArgs:

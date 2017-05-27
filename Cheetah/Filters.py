@@ -41,7 +41,7 @@ class Filter(object):
                **kw):
         """Pass Unicode strings through unmolested, unless an encoding is specified.
         """
-        if isinstance(val, unicode):
+        if isinstance(val, str):
             if encoding:
                 filtered = val.encode(encoding)
             else:
@@ -72,7 +72,7 @@ class EncodeUnicode(Filter):
         ... filter='EncodeUnicode')
         >>> print t
         """
-        if isinstance(val, unicode):
+        if isinstance(val, str):
             filtered = val.encode(encoding)
         elif val is None:
             filtered = ''
@@ -85,7 +85,7 @@ class MaxLen(Filter):
         """Replace None with '' and cut off at maxlen."""
         
     	output = super(MaxLen, self).filter(val, **kw)
-        if kw.has_key('maxlen') and len(output) > kw['maxlen']:
+        if 'maxlen' in kw and len(output) > kw['maxlen']:
             return output[:kw['maxlen']]
         return output
 
@@ -99,11 +99,11 @@ class WebSafe(Filter):
         s = s.replace("<", "&lt;")
         s = s.replace(">", "&gt;")
         # Process the additional transformations if any.
-        if kw.has_key('also'):
+        if 'also' in kw:
             also = kw['also']
             entities = webSafeEntities   # Global variable.
             for k in also:
-                if entities.has_key(k):
+                if k in entities:
                     v = entities[k]
                 else:
                     v = "&#%s;" % ord(k)
@@ -161,15 +161,15 @@ class StripSqueeze(Filter):
 def test():
     s1 = "abc <=> &"
     s2 = "   asdf  \n\t  1  2    3\n"
-    print "WebSafe INPUT:", `s1`
-    print "      WebSafe:", `WebSafe().filter(s1)`
+    print("WebSafe INPUT:", repr(s1))
+    print("      WebSafe:", repr(WebSafe().filter(s1)))
     
-    print
-    print " Strip INPUT:", `s2`
-    print "       Strip:", `Strip().filter(s2)`
-    print "StripSqueeze:", `StripSqueeze().filter(s2)`
+    print()
+    print(" Strip INPUT:", repr(s2))
+    print("       Strip:", repr(Strip().filter(s2)))
+    print("StripSqueeze:", repr(StripSqueeze().filter(s2)))
 
-    print "Unicode:", `EncodeUnicode().filter(u'aoeu12345\u1234')`
+    print("Unicode:", repr(EncodeUnicode().filter('aoeu12345\u1234')))
     
 if __name__ == "__main__":  test()
     

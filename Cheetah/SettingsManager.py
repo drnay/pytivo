@@ -21,7 +21,7 @@ __revision__ = "$Revision: 1.29 $"[11:-2]
 import sys
 import os.path
 import copy as copyModule
-from ConfigParser import ConfigParser 
+from configparser import ConfigParser 
 import re
 from tokenize import Intnumber, Floatnumber, Number
 from types import *
@@ -29,7 +29,7 @@ import types
 import new
 import tempfile
 import time
-from StringIO import StringIO # not cStringIO because of unicode support
+from io import StringIO # not cStringIO because of unicode support
 import imp                 # used by SettingsManager.updateSettingsFromPySrcFile()
 
 try:
@@ -76,9 +76,9 @@ def mergeNestedDictionaries(dict1, dict2, copy=False, deepcopy=False):
     elif deepcopy:
         dict1 = copyModule.deepcopy(dict1)
         
-    for key,val in dict2.items():
-        if dict1.has_key(key) and type(val) == types.DictType and \
-           type(dict1[key]) == types.DictType:
+    for key,val in list(dict2.items()):
+        if key in dict1 and type(val) == dict and \
+           type(dict1[key]) == dict:
             
             dict1[key] = mergeNestedDictionaries(dict1[key], val)
         else:
@@ -245,7 +245,7 @@ class _SettingsCollector:
         else:
             attrs = self._getAllAttrsFromContainer(container)
     
-        for k, v in attrs.items():
+        for k, v in list(attrs.items()):
             if (ignoreUnderscored and k.startswith('_')) or v is SettingsContainer:
                 continue
             if self._isContainer(v):
@@ -280,8 +280,8 @@ class _SettingsCollector:
         attrs.update( container().__dict__ ) 
         
         for base in container.__bases__:
-            for k, v in base.__dict__.items():
-                if not attrs.has_key(k):
+            for k, v in list(base.__dict__.items()):
+                if k not in attrs:
                     attrs[k] = v
         return attrs
 
@@ -335,7 +335,7 @@ class _SettingsCollector:
                        'SettingsContainer':SettingsContainer,
                        }
         newSettings = {'self':self}
-        exec theString in globalsDict, newSettings
+        exec(theString, globalsDict, newSettings)
         del newSettings['self'], newSettings['True'], newSettings['False']
         module = new.module('temp_settings_module')
         module.__dict__.update(newSettings)
@@ -394,8 +394,8 @@ class _SettingsCollector:
         ## loop through new settings -> deal with global settings, numbers,
         ## booleans and None ++ also deal with 'importSettings' commands
 
-        for sect, subDict in newSettings.items():
-            for key, val in subDict.items():
+        for sect, subDict in list(newSettings.items()):
+            for key, val in list(subDict.items()):
                 if convert:
                     if val.lower().startswith('python:'):
                         subDict[key] = eval(val[7:],{},{})
@@ -472,7 +472,7 @@ class SettingsManager(_SettingsCollector):
 
     def hasSetting(self, key):
         """True/False"""
-        return self._settings.has_key(key)
+        return key in self._settings
 
     def setSetting(self, name, value):
         """Set a setting in self._settings."""
@@ -576,23 +576,23 @@ class SettingsManager(_SettingsCollector):
         iniSettings = {'Globals':{}}
         globals = iniSettings['Globals']
         
-        for key, theSetting in self.settings().items():
+        for key, theSetting in list(self.settings().items()):
             if type(theSetting) in convertableToStrTypes:
                 globals[key] = theSetting
             if type(theSetting) is DictType:
                 iniSettings[key] = {}
-                for subKey, subSetting in theSetting.items():
+                for subKey, subSetting in list(theSetting.items()):
                     if type(subSetting) in convertableToStrTypes:
                         iniSettings[key][subKey] = subSetting
         
-        sections = iniSettings.keys()
+        sections = list(iniSettings.keys())
         sections.sort()
         outFileWrite = outFile.write # short-cut namebinding for efficiency
         for section in sections:
             outFileWrite("[" + section + "]\n")
             sectDict = iniSettings[section]
             
-            keys = sectDict.keys()
+            keys = list(sectDict.keys())
             keys.sort()
             for key in keys:
                 if key == "__name__":

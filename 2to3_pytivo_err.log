@@ -1,0 +1,302 @@
+WARNING: --write-unchanged-files/-W implies -w.
+lib2to3.main: Output in 'py3/pytivo' will mirror the input directory 'pytivo' layout.
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+RefactoringTool: Skipping optional fixer: buffer
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+RefactoringTool: Skipping optional fixer: idioms
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+RefactoringTool: Skipping optional fixer: set_literal
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+RefactoringTool: Skipping optional fixer: ws_comma
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+RefactoringTool: Refactored pytivo/beacon.py
+RefactoringTool: Writing converted pytivo/beacon.py to py3/pytivo/beacon.py.
+RefactoringTool: Refactored pytivo/config.py
+RefactoringTool: Writing converted pytivo/config.py to py3/pytivo/config.py.
+RefactoringTool: Refactored pytivo/httpserver.py
+RefactoringTool: Writing converted pytivo/httpserver.py to py3/pytivo/httpserver.py.
+RefactoringTool: Refactored pytivo/lrucache.py
+RefactoringTool: Writing converted pytivo/lrucache.py to py3/pytivo/lrucache.py.
+RefactoringTool: Refactored pytivo/metadata.py
+RefactoringTool: Writing converted pytivo/metadata.py to py3/pytivo/metadata.py.
+RefactoringTool: Refactored pytivo/plugin.py
+RefactoringTool: Writing converted pytivo/plugin.py to py3/pytivo/plugin.py.
+RefactoringTool: No changes to pytivo/pyTivo.py
+RefactoringTool: Writing converted pytivo/pyTivo.py to py3/pytivo/pyTivo.py.
+RefactoringTool: No changes to pytivo/pyTivoService.py
+RefactoringTool: Writing converted pytivo/pyTivoService.py to py3/pytivo/pyTivoService.py.
+RefactoringTool: Refactored pytivo/turing.py
+RefactoringTool: Writing converted pytivo/turing.py to py3/pytivo/turing.py.
+RefactoringTool: Refactored pytivo/zeroconf.py
+RefactoringTool: Writing converted pytivo/zeroconf.py to py3/pytivo/zeroconf.py.
+RefactoringTool: Refactored pytivo/Cheetah/CacheRegion.py
+RefactoringTool: Writing converted pytivo/Cheetah/CacheRegion.py to py3/pytivo/Cheetah/CacheRegion.py.
+RefactoringTool: Refactored pytivo/Cheetah/CacheStore.py
+RefactoringTool: Writing converted pytivo/Cheetah/CacheStore.py to py3/pytivo/Cheetah/CacheStore.py.
+RefactoringTool: Refactored pytivo/Cheetah/Compiler.py
+RefactoringTool: Writing converted pytivo/Cheetah/Compiler.py to py3/pytivo/Cheetah/Compiler.py.
+RefactoringTool: No changes to pytivo/Cheetah/DummyTransaction.py
+RefactoringTool: Writing converted pytivo/Cheetah/DummyTransaction.py to py3/pytivo/Cheetah/DummyTransaction.py.
+RefactoringTool: No changes to pytivo/Cheetah/ErrorCatchers.py
+RefactoringTool: Writing converted pytivo/Cheetah/ErrorCatchers.py to py3/pytivo/Cheetah/ErrorCatchers.py.
+RefactoringTool: Refactored pytivo/Cheetah/Filters.py
+RefactoringTool: Writing converted pytivo/Cheetah/Filters.py to py3/pytivo/Cheetah/Filters.py.
+RefactoringTool: Refactored pytivo/Cheetah/NameMapper.py
+RefactoringTool: Writing converted pytivo/Cheetah/NameMapper.py to py3/pytivo/Cheetah/NameMapper.py.
+RefactoringTool: Refactored pytivo/Cheetah/Parser.py
+RefactoringTool: Writing converted pytivo/Cheetah/Parser.py to py3/pytivo/Cheetah/Parser.py.
+RefactoringTool: No changes to pytivo/Cheetah/Servlet.py
+RefactoringTool: Writing converted pytivo/Cheetah/Servlet.py to py3/pytivo/Cheetah/Servlet.py.
+RefactoringTool: Refactored pytivo/Cheetah/SettingsManager.py
+RefactoringTool: Writing converted pytivo/Cheetah/SettingsManager.py to py3/pytivo/Cheetah/SettingsManager.py.
+RefactoringTool: Refactored pytivo/Cheetah/SourceReader.py
+RefactoringTool: Writing converted pytivo/Cheetah/SourceReader.py to py3/pytivo/Cheetah/SourceReader.py.
+RefactoringTool: Refactored pytivo/Cheetah/Template.py
+RefactoringTool: Writing converted pytivo/Cheetah/Template.py to py3/pytivo/Cheetah/Template.py.
+RefactoringTool: No changes to pytivo/Cheetah/Unspecified.py
+RefactoringTool: Writing converted pytivo/Cheetah/Unspecified.py to py3/pytivo/Cheetah/Unspecified.py.
+RefactoringTool: Refactored pytivo/Cheetah/Version.py
+RefactoringTool: Writing converted pytivo/Cheetah/Version.py to py3/pytivo/Cheetah/Version.py.
+RefactoringTool: Refactored pytivo/Cheetah/__init__.py
+RefactoringTool: Writing converted pytivo/Cheetah/__init__.py to py3/pytivo/Cheetah/__init__.py.
+RefactoringTool: No changes to pytivo/Cheetah/convertTmplPathToModuleName.py
+RefactoringTool: Writing converted pytivo/Cheetah/convertTmplPathToModuleName.py to py3/pytivo/Cheetah/convertTmplPathToModuleName.py.
+RefactoringTool: No changes to pytivo/Cheetah/Macros/I18n.py
+RefactoringTool: Writing converted pytivo/Cheetah/Macros/I18n.py to py3/pytivo/Cheetah/Macros/I18n.py.
+RefactoringTool: No changes to pytivo/Cheetah/Macros/__init__.py
+RefactoringTool: Writing converted pytivo/Cheetah/Macros/__init__.py to py3/pytivo/Cheetah/Macros/__init__.py.
+RefactoringTool: No changes to pytivo/Cheetah/Utils/Indenter.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/Indenter.py to py3/pytivo/Cheetah/Utils/Indenter.py.
+RefactoringTool: Refactored pytivo/Cheetah/Utils/Misc.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/Misc.py to py3/pytivo/Cheetah/Utils/Misc.py.
+RefactoringTool: Refactored pytivo/Cheetah/Utils/VerifyType.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/VerifyType.py to py3/pytivo/Cheetah/Utils/VerifyType.py.
+RefactoringTool: No changes to pytivo/Cheetah/Utils/WebInputMixin.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/WebInputMixin.py to py3/pytivo/Cheetah/Utils/WebInputMixin.py.
+RefactoringTool: No changes to pytivo/Cheetah/Utils/__init__.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/__init__.py to py3/pytivo/Cheetah/Utils/__init__.py.
+RefactoringTool: No changes to pytivo/Cheetah/Utils/htmlDecode.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/htmlDecode.py to py3/pytivo/Cheetah/Utils/htmlDecode.py.
+RefactoringTool: No changes to pytivo/Cheetah/Utils/htmlEncode.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/htmlEncode.py to py3/pytivo/Cheetah/Utils/htmlEncode.py.
+RefactoringTool: Refactored pytivo/Cheetah/Utils/memcache.py
+RefactoringTool: Writing converted pytivo/Cheetah/Utils/memcache.py to py3/pytivo/Cheetah/Utils/memcache.py.
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+root: Generating grammar tables from /usr/lib/python2.7/lib2to3/PatternGrammar.txt
+RefactoringTool: Refactored pytivo/mutagen/__init__.py
+RefactoringTool: Writing converted pytivo/mutagen/__init__.py to py3/pytivo/mutagen/__init__.py.
+RefactoringTool: Refactored pytivo/mutagen/_constants.py
+RefactoringTool: Writing converted pytivo/mutagen/_constants.py to py3/pytivo/mutagen/_constants.py.
+RefactoringTool: Refactored pytivo/mutagen/_util.py
+RefactoringTool: Writing converted pytivo/mutagen/_util.py to py3/pytivo/mutagen/_util.py.
+RefactoringTool: Refactored pytivo/mutagen/_vorbis.py
+RefactoringTool: Writing converted pytivo/mutagen/_vorbis.py to py3/pytivo/mutagen/_vorbis.py.
+RefactoringTool: Refactored pytivo/mutagen/apev2.py
+RefactoringTool: Writing converted pytivo/mutagen/apev2.py to py3/pytivo/mutagen/apev2.py.
+RefactoringTool: Refactored pytivo/mutagen/asf.py
+RefactoringTool: Writing converted pytivo/mutagen/asf.py to py3/pytivo/mutagen/asf.py.
+RefactoringTool: Refactored pytivo/mutagen/easyid3.py
+RefactoringTool: Writing converted pytivo/mutagen/easyid3.py to py3/pytivo/mutagen/easyid3.py.
+RefactoringTool: Refactored pytivo/mutagen/easymp4.py
+RefactoringTool: Writing converted pytivo/mutagen/easymp4.py to py3/pytivo/mutagen/easymp4.py.
+RefactoringTool: Refactored pytivo/mutagen/flac.py
+RefactoringTool: Writing converted pytivo/mutagen/flac.py to py3/pytivo/mutagen/flac.py.
+RefactoringTool: Refactored pytivo/mutagen/id3.py
+RefactoringTool: Writing converted pytivo/mutagen/id3.py to py3/pytivo/mutagen/id3.py.
+RefactoringTool: Refactored pytivo/mutagen/m4a.py
+RefactoringTool: Writing converted pytivo/mutagen/m4a.py to py3/pytivo/mutagen/m4a.py.
+RefactoringTool: No changes to pytivo/mutagen/monkeysaudio.py
+RefactoringTool: Writing converted pytivo/mutagen/monkeysaudio.py to py3/pytivo/mutagen/monkeysaudio.py.
+RefactoringTool: Refactored pytivo/mutagen/mp3.py
+RefactoringTool: Writing converted pytivo/mutagen/mp3.py to py3/pytivo/mutagen/mp3.py.
+RefactoringTool: Refactored pytivo/mutagen/mp4.py
+RefactoringTool: Writing converted pytivo/mutagen/mp4.py to py3/pytivo/mutagen/mp4.py.
+RefactoringTool: No changes to pytivo/mutagen/musepack.py
+RefactoringTool: Writing converted pytivo/mutagen/musepack.py to py3/pytivo/mutagen/musepack.py.
+RefactoringTool: Refactored pytivo/mutagen/ogg.py
+RefactoringTool: Writing converted pytivo/mutagen/ogg.py to py3/pytivo/mutagen/ogg.py.
+RefactoringTool: Refactored pytivo/mutagen/oggflac.py
+RefactoringTool: Writing converted pytivo/mutagen/oggflac.py to py3/pytivo/mutagen/oggflac.py.
+RefactoringTool: No changes to pytivo/mutagen/oggspeex.py
+RefactoringTool: Writing converted pytivo/mutagen/oggspeex.py to py3/pytivo/mutagen/oggspeex.py.
+RefactoringTool: No changes to pytivo/mutagen/oggtheora.py
+RefactoringTool: Writing converted pytivo/mutagen/oggtheora.py to py3/pytivo/mutagen/oggtheora.py.
+RefactoringTool: No changes to pytivo/mutagen/oggvorbis.py
+RefactoringTool: Writing converted pytivo/mutagen/oggvorbis.py to py3/pytivo/mutagen/oggvorbis.py.
+RefactoringTool: No changes to pytivo/mutagen/optimfrog.py
+RefactoringTool: Writing converted pytivo/mutagen/optimfrog.py to py3/pytivo/mutagen/optimfrog.py.
+RefactoringTool: No changes to pytivo/mutagen/trueaudio.py
+RefactoringTool: Writing converted pytivo/mutagen/trueaudio.py to py3/pytivo/mutagen/trueaudio.py.
+RefactoringTool: No changes to pytivo/mutagen/wavpack.py
+RefactoringTool: Writing converted pytivo/mutagen/wavpack.py to py3/pytivo/mutagen/wavpack.py.
+RefactoringTool: No changes to pytivo/plugins/__init__.py
+RefactoringTool: Writing converted pytivo/plugins/__init__.py to py3/pytivo/plugins/__init__.py.
+RefactoringTool: No changes to pytivo/plugins/music/__init__.py
+RefactoringTool: Writing converted pytivo/plugins/music/__init__.py to py3/pytivo/plugins/music/__init__.py.
+RefactoringTool: Refactored pytivo/plugins/music/music.py
+RefactoringTool: Writing converted pytivo/plugins/music/music.py to py3/pytivo/plugins/music/music.py.
+RefactoringTool: No changes to pytivo/plugins/photo/__init__.py
+RefactoringTool: Writing converted pytivo/plugins/photo/__init__.py to py3/pytivo/plugins/photo/__init__.py.
+RefactoringTool: Refactored pytivo/plugins/photo/photo.py
+RefactoringTool: Writing converted pytivo/plugins/photo/photo.py to py3/pytivo/plugins/photo/photo.py.
+RefactoringTool: No changes to pytivo/plugins/settings/__init__.py
+RefactoringTool: Writing converted pytivo/plugins/settings/__init__.py to py3/pytivo/plugins/settings/__init__.py.
+RefactoringTool: No changes to pytivo/plugins/settings/buildhelp.py
+RefactoringTool: Writing converted pytivo/plugins/settings/buildhelp.py to py3/pytivo/plugins/settings/buildhelp.py.
+RefactoringTool: Refactored pytivo/plugins/settings/settings.py
+RefactoringTool: Writing converted pytivo/plugins/settings/settings.py to py3/pytivo/plugins/settings/settings.py.
+RefactoringTool: No changes to pytivo/plugins/togo/__init__.py
+RefactoringTool: Writing converted pytivo/plugins/togo/__init__.py to py3/pytivo/plugins/togo/__init__.py.
+RefactoringTool: Refactored pytivo/plugins/togo/togo.py
+RefactoringTool: Writing converted pytivo/plugins/togo/togo.py to py3/pytivo/plugins/togo/togo.py.
+RefactoringTool: No changes to pytivo/plugins/video/__init__.py
+RefactoringTool: Writing converted pytivo/plugins/video/__init__.py to py3/pytivo/plugins/video/__init__.py.
+RefactoringTool: Refactored pytivo/plugins/video/transcode.py
+RefactoringTool: Writing converted pytivo/plugins/video/transcode.py to py3/pytivo/plugins/video/transcode.py.
+RefactoringTool: Refactored pytivo/plugins/video/video.py
+RefactoringTool: Writing converted pytivo/plugins/video/video.py to py3/pytivo/plugins/video/video.py.
+RefactoringTool: Files that were modified:
+RefactoringTool: pytivo/beacon.py
+RefactoringTool: pytivo/config.py
+RefactoringTool: pytivo/httpserver.py
+RefactoringTool: pytivo/lrucache.py
+RefactoringTool: pytivo/metadata.py
+RefactoringTool: pytivo/plugin.py
+RefactoringTool: pytivo/pyTivo.py
+RefactoringTool: pytivo/pyTivoService.py
+RefactoringTool: pytivo/turing.py
+RefactoringTool: pytivo/zeroconf.py
+RefactoringTool: pytivo/Cheetah/CacheRegion.py
+RefactoringTool: pytivo/Cheetah/CacheStore.py
+RefactoringTool: pytivo/Cheetah/Compiler.py
+RefactoringTool: pytivo/Cheetah/DummyTransaction.py
+RefactoringTool: pytivo/Cheetah/ErrorCatchers.py
+RefactoringTool: pytivo/Cheetah/Filters.py
+RefactoringTool: pytivo/Cheetah/NameMapper.py
+RefactoringTool: pytivo/Cheetah/Parser.py
+RefactoringTool: pytivo/Cheetah/Servlet.py
+RefactoringTool: pytivo/Cheetah/SettingsManager.py
+RefactoringTool: pytivo/Cheetah/SourceReader.py
+RefactoringTool: pytivo/Cheetah/Template.py
+RefactoringTool: pytivo/Cheetah/Unspecified.py
+RefactoringTool: pytivo/Cheetah/Version.py
+RefactoringTool: pytivo/Cheetah/__init__.py
+RefactoringTool: pytivo/Cheetah/convertTmplPathToModuleName.py
+RefactoringTool: pytivo/Cheetah/Macros/I18n.py
+RefactoringTool: pytivo/Cheetah/Macros/__init__.py
+RefactoringTool: pytivo/Cheetah/Utils/Indenter.py
+RefactoringTool: pytivo/Cheetah/Utils/Misc.py
+RefactoringTool: pytivo/Cheetah/Utils/VerifyType.py
+RefactoringTool: pytivo/Cheetah/Utils/WebInputMixin.py
+RefactoringTool: pytivo/Cheetah/Utils/__init__.py
+RefactoringTool: pytivo/Cheetah/Utils/htmlDecode.py
+RefactoringTool: pytivo/Cheetah/Utils/htmlEncode.py
+RefactoringTool: pytivo/Cheetah/Utils/memcache.py
+RefactoringTool: pytivo/mutagen/__init__.py
+RefactoringTool: pytivo/mutagen/_constants.py
+RefactoringTool: pytivo/mutagen/_util.py
+RefactoringTool: pytivo/mutagen/_vorbis.py
+RefactoringTool: pytivo/mutagen/apev2.py
+RefactoringTool: pytivo/mutagen/asf.py
+RefactoringTool: pytivo/mutagen/easyid3.py
+RefactoringTool: pytivo/mutagen/easymp4.py
+RefactoringTool: pytivo/mutagen/flac.py
+RefactoringTool: pytivo/mutagen/id3.py
+RefactoringTool: pytivo/mutagen/m4a.py
+RefactoringTool: pytivo/mutagen/monkeysaudio.py
+RefactoringTool: pytivo/mutagen/mp3.py
+RefactoringTool: pytivo/mutagen/mp4.py
+RefactoringTool: pytivo/mutagen/musepack.py
+RefactoringTool: pytivo/mutagen/ogg.py
+RefactoringTool: pytivo/mutagen/oggflac.py
+RefactoringTool: pytivo/mutagen/oggspeex.py
+RefactoringTool: pytivo/mutagen/oggtheora.py
+RefactoringTool: pytivo/mutagen/oggvorbis.py
+RefactoringTool: pytivo/mutagen/optimfrog.py
+RefactoringTool: pytivo/mutagen/trueaudio.py
+RefactoringTool: pytivo/mutagen/wavpack.py
+RefactoringTool: pytivo/plugins/__init__.py
+RefactoringTool: pytivo/plugins/music/__init__.py
+RefactoringTool: pytivo/plugins/music/music.py
+RefactoringTool: pytivo/plugins/photo/__init__.py
+RefactoringTool: pytivo/plugins/photo/photo.py
+RefactoringTool: pytivo/plugins/settings/__init__.py
+RefactoringTool: pytivo/plugins/settings/buildhelp.py
+RefactoringTool: pytivo/plugins/settings/settings.py
+RefactoringTool: pytivo/plugins/togo/__init__.py
+RefactoringTool: pytivo/plugins/togo/togo.py
+RefactoringTool: pytivo/plugins/video/__init__.py
+RefactoringTool: pytivo/plugins/video/transcode.py
+RefactoringTool: pytivo/plugins/video/video.py
+RefactoringTool: Warnings/messages while refactoring:
+RefactoringTool: ### In file pytivo/httpserver.py ###
+RefactoringTool: Line 63: could not convert: raise "Container Name in use"
+RefactoringTool: Python 3 does not support string exceptions
+RefactoringTool: ### In file pytivo/Cheetah/Parser.py ###
+RefactoringTool: Line 355: cannot convert map(None, ...) with multiple arguments because map() now truncates to the shortest sequence
+RefactoringTool: Line 355: cannot convert map(None, ...) with multiple arguments because map() now truncates to the shortest sequence
+RefactoringTool: ### In file pytivo/Cheetah/Utils/memcache.py ###
+RefactoringTool: Line 552: absolute and local imports together
+RefactoringTool: ### In file pytivo/mutagen/_util.py ###
+RefactoringTool: Line 77: You should use a for loop here
+RefactoringTool: Line 54: You should use a for loop here
+RefactoringTool: ### In file pytivo/mutagen/_vorbis.py ###
+RefactoringTool: Line 192: You should use a for loop here
+RefactoringTool: ### In file pytivo/mutagen/asf.py ###
+RefactoringTool: Line 59: You should use a for loop here
+RefactoringTool: ### In file pytivo/mutagen/flac.py ###
+RefactoringTool: Line 86: You should use a for loop here
+RefactoringTool: ### In file pytivo/mutagen/id3.py ###
+RefactoringTool: Line 130: You should use a for loop here

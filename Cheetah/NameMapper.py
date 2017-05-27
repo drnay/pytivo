@@ -139,7 +139,7 @@ Version: $Revision: 1.30 $
 Start Date: 2001/04/03
 Last Revision Date: $Date: 2007/04/03 01:58:20 $
 """
-from __future__ import generators
+
 __author__ = "Tavis Rudd <tavis@damnsimple.com>," +\
              "\nChuck Esterbrook <echuck@mindspring.com>"
 __revision__ = "$Revision: 1.30 $"[11:-2]
@@ -147,6 +147,7 @@ import types
 from types import StringType, InstanceType, ClassType, TypeType
 from pprint import pformat
 import inspect
+import collections
 
 _INCLUDE_NAMESPACE_REPR_IN_NOTFOUND_EXCEPTIONS = False
 _ALLOW_WRAPPING_OF_NOTFOUND_EXCEPTIONS = True
@@ -188,7 +189,7 @@ def _wrapNotFoundException(exc, fullName, namespace):
     
 def hasKey(obj, key):
     """Determine if 'obj' has 'key' """
-    if hasattr(obj,'has_key') and obj.has_key(key):
+    if hasattr(obj,'has_key') and key in obj:
         return True
     elif hasattr(obj, key):
         return True
@@ -196,7 +197,7 @@ def hasKey(obj, key):
         return False
 
 def valueForKey(obj, key):
-    if hasattr(obj, 'has_key') and obj.has_key(key):
+    if hasattr(obj, 'has_key') and key in obj:
         return obj[key]
     elif hasattr(obj, key):
         return getattr(obj, key)
@@ -207,14 +208,14 @@ def _valueForName(obj, name, executeCallables=False):
     nameChunks=name.split('.')
     for i in range(len(nameChunks)):
         key = nameChunks[i]
-        if hasattr(obj, 'has_key') and obj.has_key(key):
+        if hasattr(obj, 'has_key') and key in obj:
             nextObj = obj[key]
         elif hasattr(obj, key):
             nextObj = getattr(obj, key)
         else:
             _raiseNotFoundException(key, obj)
         
-        if (executeCallables and callable(nextObj)
+        if (executeCallables and isinstance(nextObj, collections.Callable)
             and (type(nextObj) not in (InstanceType, ClassType))):
             obj = nextObj()
         else:
@@ -224,7 +225,7 @@ def _valueForName(obj, name, executeCallables=False):
 def valueForName(obj, name, executeCallables=False):
     try:
         return _valueForName(obj, name, executeCallables)
-    except NotFound, e:
+    except NotFound as e:
         _wrapNotFoundException(e, fullName=name, namespace=obj)
 
 def valueFromSearchList(searchList, name, executeCallables=False):
@@ -248,7 +249,7 @@ def valueFromFrameOrSearchList(searchList, name, executeCallables=False,
     def __valueForName():
         try:
             return _valueForName(namespace, name, executeCallables=executeCallables)
-        except NotFound, e:
+        except NotFound as e:
             _wrapNotFoundException(e, fullName=name, namespace=searchList)
     try:
         if not frame:
@@ -340,13 +341,13 @@ def example():
         }
     b = 'this is local b'
 
-    print valueForKey(a.dic,'subDict')
-    print valueForName(a, 'dic.item')
-    print valueForName(vars(), 'b')
-    print valueForName(__builtins__, 'dir')()
-    print valueForName(vars(), 'a.classVar')
-    print valueForName(vars(), 'a.dic.func', executeCallables=True)
-    print valueForName(vars(), 'a.method2.item1', executeCallables=True)
+    print(valueForKey(a.dic,'subDict'))
+    print(valueForName(a, 'dic.item'))
+    print(valueForName(vars(), 'b'))
+    print(valueForName(__builtins__, 'dir')())
+    print(valueForName(vars(), 'a.classVar'))
+    print(valueForName(vars(), 'a.dic.func', executeCallables=True))
+    print(valueForName(vars(), 'a.method2.item1', executeCallables=True))
 
 if __name__ == '__main__':
     example()

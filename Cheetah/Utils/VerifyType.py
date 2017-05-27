@@ -68,7 +68,7 @@ def VerifyTypeClass(arg, argname, legalTypes, ltd, klass, errmsgExtra=''):
     """
     VerifyType(arg, argname, legalTypes, ltd, errmsgExtra)
     # If no exception, the arg is a legal type.
-    if type(arg) == types.ClassType and not issubclass(arg, klass):
+    if type(arg) == type and not issubclass(arg, klass):
         # Must test for "is class type" to avoid TypeError from issubclass().
         m = _errmsg(argname, ltd, errmsgExtra)
         raise TypeError(m)

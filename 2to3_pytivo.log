@@ -1,0 +1,4239 @@
+--- pytivo/beacon.py	(original)
++++ pytivo/beacon.py	(refactored)
+@@ -5,7 +5,7 @@
+ import time
+ import uuid
+ from threading import Timer
+-from urllib import quote
++from urllib.parse import quote
+ 
+ import zeroconf
+ 
+@@ -165,8 +165,8 @@
+                         if result < 0:
+                             break
+                         packet = packet[result:]
+-                except Exception, e:
+-                    print e
++                except Exception as e:
++                    print(e)
+ 
+     def start(self):
+         self.send_beacon()
+@@ -196,7 +196,7 @@
+ 
+     def listen(self):
+         """ For the direct-connect, TCP-style beacon """
+-        import thread
++        import _thread
+ 
+         def server():
+             TCPSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+@@ -215,7 +215,7 @@
+ 
+                 client.close()
+ 
+-        thread.start_new_thread(server, ())
++        _thread.start_new_thread(server, ())
+ 
+     def get_name(self, address):
+         """ Exchange beacons, and extract the machine name. """
+--- pytivo/config.py	(original)
++++ pytivo/config.py	(refactored)
+@@ -1,4 +1,4 @@
+-import ConfigParser
++import configparser
+ import getopt
+ import logging
+ import logging.config
+@@ -7,7 +7,8 @@
+ import socket
+ import sys
+ import uuid
+-from ConfigParser import NoOptionError
++from configparser import NoOptionError
++from functools import reduce
+ 
+ class Bdict(dict):
+     def getboolean(self, x):
+@@ -28,8 +29,8 @@
+ 
+     try:
+         opts, _ = getopt.getopt(argv, 'c:e:', ['config=', 'extraconf='])
+-    except getopt.GetoptError, msg:
+-        print msg
++    except getopt.GetoptError as msg:
++        print(msg)
+ 
+     for opt, value in opts:
+         if opt in ('-c', '--config'):
+@@ -47,11 +48,11 @@
+ 
+     bin_paths = {}
+ 
+-    config = ConfigParser.ConfigParser()
++    config = configparser.ConfigParser()
+     configs_found = config.read(config_files)
+     if not configs_found:
+-        print ('WARNING: pyTivo.conf does not exist.\n' +
+-               'Assuming default values.')
++        print(('WARNING: pyTivo.conf does not exist.\n' +
++               'Assuming default values.'))
+         configs_found = config_files[-1:]
+ 
+     for section in config.sections():
+@@ -71,7 +72,7 @@
+     f.close()
+ 
+ def tivos_by_ip(tivoIP):
+-    for key, value in tivos.items():
++    for key, value in list(tivos.items()):
+         if value['address'] == tivoIP:
+             return key
+ 
+--- pytivo/httpserver.py	(original)
++++ pytivo/httpserver.py	(refactored)
+@@ -1,5 +1,5 @@
+-import BaseHTTPServer
+-import SocketServer
++import http.server
++import socketserver
+ import cgi
+ import gzip
+ import logging
+@@ -8,9 +8,9 @@
+ import shutil
+ import socket
+ import time
+-from cStringIO import StringIO
++from io import StringIO
+ from email.utils import formatdate
+-from urllib import unquote_plus, quote
++from urllib.parse import unquote_plus, quote
+ from xml.sax.saxutils import escape
+ 
+ from Cheetah.Template import Template
+@@ -48,13 +48,13 @@
+ RELOAD = '<p>The <a href="%s">page</a> will reload in %d seconds.</p>'
+ UNSUP = '<h3>Unsupported Command</h3> <p>Query:</p> <ul>%s</ul>'
+ 
+-class TivoHTTPServer(SocketServer.ThreadingMixIn, BaseHTTPServer.HTTPServer):
++class TivoHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
+     def __init__(self, server_address, RequestHandlerClass):
+         self.containers = {}
+         self.stop = False
+         self.restart = False
+         self.logger = logging.getLogger('pyTivo')
+-        BaseHTTPServer.HTTPServer.__init__(self, server_address,
++        http.server.HTTPServer.__init__(self, server_address,
+                                            RequestHandlerClass)
+         self.daemon_threads = True
+ 
+@@ -81,13 +81,13 @@
+     def set_service_status(self, status):
+         self.in_service = status
+ 
+-class TivoHTTPHandler(BaseHTTPServer.BaseHTTPRequestHandler):
++class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
+     def __init__(self, request, client_address, server):
+         self.wbufsize = 0x10000
+         self.server_version = 'pyTivo/1.0'
+         self.protocol_version = 'HTTP/1.1'
+         self.sys_version = ''
+-        BaseHTTPServer.BaseHTTPRequestHandler.__init__(self, request,
++        http.server.BaseHTTPRequestHandler.__init__(self, request,
+             client_address, server)
+ 
+     def address_string(self):
+@@ -238,7 +238,7 @@
+     def handle_file(self, query, splitpath):
+         if '..' not in splitpath:    # Protect against path exploits
+             ## Pass it off to a plugin?
+-            for name, container in self.server.containers.items():
++            for name, container in list(self.server.containers.items()):
+                 if splitpath[0] == name:
+                     self.cname = name
+                     self.container = container
+@@ -313,7 +313,7 @@
+                                           'tivo-photos'):
+                     settings['content_type'] = mime
+                     tsncontainers.append((section, settings))
+-            except Exception, msg:
++            except Exception as msg:
+                 self.server.logger.error(section + ' - ' + str(msg))
+         t = Template(file=os.path.join(SCRIPTDIR, 'templates',
+                                        'root_container.tmpl'),
+@@ -358,7 +358,7 @@
+ 
+     def unsupported(self, query):
+         message = UNSUP % '\n'.join(['<li>%s: %s</li>' % (key, repr(value))
+-                                     for key, value in query.items()])
++                                     for key, value in list(query.items())])
+         text = BASE_HTML % message
+         self.send_html(text, code=404)
+ 
+--- pytivo/lrucache.py	(original)
++++ pytivo/lrucache.py	(refactored)
+@@ -38,7 +38,7 @@
+ 
+ """
+ 
+-from __future__ import generators
++
+ import time
+ from heapq import heappush, heappop, heapify
+ 
+@@ -118,9 +118,9 @@
+     def __init__(self, size=DEFAULT_SIZE):
+         # Check arguments
+         if size <= 0:
+-            raise ValueError, size
++            raise ValueError(size)
+         elif type(size) is not type(0):
+-            raise TypeError, size
++            raise TypeError(size)
+         object.__init__(self)
+         self.__heap = []
+         self.__dict = {}
+@@ -133,10 +133,10 @@
+         return len(self.__heap)
+ 
+     def __contains__(self, key):
+-        return self.__dict.has_key(key)
++        return key in self.__dict
+ 
+     def __setitem__(self, key, obj):
+-        if self.__dict.has_key(key):
++        if key in self.__dict:
+             node = self.__dict[key]
+             node.obj = obj
+             node.atime = time.time()
+@@ -145,7 +145,7 @@
+         else:
+             # size may have been reset, so we loop
+             overage = len(self.__heap) - self.size + 1
+-            for i in xrange(overage):
++            for i in range(overage):
+                 lru = heappop(self.__heap)
+                 del self.__dict[lru.key]
+             node = self.__Node(key, obj, time.time())
+@@ -153,7 +153,7 @@
+             heappush(self.__heap, node)
+ 
+     def __getitem__(self, key):
+-        if not self.__dict.has_key(key):
++        if key not in self.__dict:
+             raise CacheKeyError(key)
+         else:
+             node = self.__dict[key]
+@@ -162,7 +162,7 @@
+             return node.obj
+ 
+     def __delitem__(self, key):
+-        if not self.__dict.has_key(key):
++        if key not in self.__dict:
+             raise CacheKeyError(key)
+         else:
+             node = self.__dict[key]
+@@ -183,7 +183,7 @@
+         # automagically shrink heap on resize
+         if name == 'size':
+             overage = len(self.__heap) - value
+-            for i in xrange(overage):
++            for i in range(overage):
+                 lru = heappop(self.__heap)
+                 del self.__dict[lru.key]
+ 
+@@ -194,7 +194,7 @@
+         """Return the last modification time for the cache record with key.
+         May be useful for cache instances where the stored values can get
+         'stale', such as caching file or network resource contents."""
+-        if not self.__dict.has_key(key):
++        if key not in self.__dict:
+             raise CacheKeyError(key)
+         else:
+             node = self.__dict[key]
+@@ -202,21 +202,21 @@
+ 
+ if __name__ == "__main__":
+     cache = LRUCache(25)
+-    print cache
++    print(cache)
+     for i in range(50):
+         cache[i] = str(i)
+-    print cache
++    print(cache)
+     if 46 in cache:
+         del cache[46]
+-    print cache
++    print(cache)
+     cache.size = 10
+-    print cache
++    print(cache)
+     cache[46] = '46'
+-    print cache
+-    print len(cache)
++    print(cache)
++    print(len(cache))
+     for c in cache:
+-        print c
+-    print cache
+-    print cache.mtime(46)
++        print(c)
++    print(cache)
++    print(cache.mtime(46))
+     for c in cache:
+-        print c
++        print(c)
+--- pytivo/metadata.py	(original)
++++ pytivo/metadata.py	(refactored)
+@@ -133,7 +133,7 @@
+     len_desc = 0
+ 
+     try:
+-        mp4meta = mutagen.File(unicode(full_path, 'utf-8'))
++        mp4meta = mutagen.File(str(full_path, 'utf-8'))
+         assert(mp4meta)
+     except:
+         mp4_cache[full_path] = {}
+@@ -148,7 +148,7 @@
+         isTVShow = (mp4meta['stik'] == mutagen.mp4.MediaKind.TV_SHOW)
+     else:
+         isTVShow = 'tvsh' in mp4meta
+-    for key, value in mp4meta.items():
++    for key, value in list(mp4meta.items()):
+         if type(value) == list:
+             value = value[0]
+         if key in keys:
+@@ -259,7 +259,7 @@
+             try:
+                 if tag in rawmeta:
+                     value = rawmeta[tag][0]
+-                    if type(value) not in (str, unicode):
++                    if type(value) not in (str, str):
+                         value = str(value)
+                     if value:
+                         metadata[tagname] = value
+@@ -292,7 +292,7 @@
+         return dvrms_cache[full_path]
+ 
+     try:
+-        rawmeta = mutagen.File(unicode(full_path, 'utf-8'))
++        rawmeta = mutagen.File(str(full_path, 'utf-8'))
+         assert(rawmeta)
+     except:
+         dvrms_cache[full_path] = {}
+@@ -307,7 +307,7 @@
+             'DESCRIPTION': 'description', 'YEAR': 'movieYear',
+             'EPISODENUM': 'episodeNumber'}
+     metadata = {}
+-    path = os.path.dirname(unicode(full_path, 'utf-8'))
++    path = os.path.dirname(str(full_path, 'utf-8'))
+     eyetvp = [x for x in os.listdir(path) if x.endswith('.eyetvp')][0]
+     eyetvp = os.path.join(path, eyetvp)
+     try:
+@@ -341,7 +341,7 @@
+ 
+ def from_text(full_path):
+     metadata = {}
+-    full_path = unicode(full_path, 'utf-8')
++    full_path = str(full_path, 'utf-8')
+     path, name = os.path.split(full_path)
+     title, ext = os.path.splitext(name)
+ 
+@@ -400,7 +400,7 @@
+     base_path, name = os.path.split(full_path)
+     title, ext = os.path.splitext(name)
+     if not mtime:
+-        mtime = os.path.getmtime(unicode(full_path, 'utf-8'))
++        mtime = os.path.getmtime(str(full_path, 'utf-8'))
+     try:
+         originalAirDate = datetime.utcfromtimestamp(mtime)
+     except:
+@@ -533,7 +533,7 @@
+     xmldoc = None
+     try:
+         xmldoc = minidom.parseString(os.linesep.join(nfo_data))
+-    except expat.ExpatError, err:
++    except expat.ExpatError as err:
+         if expat.ErrorString(err.code) == expat.errors.XML_ERROR_INVALID_TOKEN:
+             # might be a URL outside the xml
+             while len(nfo_data) > err.lineno:
+@@ -699,7 +699,7 @@
+     return metadata
+ 
+ def _tdcat_bin(tdcat_path, full_path, tivo_mak):
+-    fname = unicode(full_path, 'utf-8')
++    fname = str(full_path, 'utf-8')
+     if mswindows:
+         fname = fname.encode('cp1252')
+     tcmd = [tdcat_path, '-m', tivo_mak, '-2', fname]
+@@ -716,7 +716,7 @@
+     tfile.close()
+ 
+     count = 0
+-    for i in xrange(chunks):
++    for i in range(chunks):
+         chunk_size, data_size, id, enc = struct.unpack('>LLHH',
+             rawdata[count:count + 12])
+         count += 12
+--- pytivo/plugin.py	(original)
++++ pytivo/plugin.py	(refactored)
+@@ -5,17 +5,17 @@
+ import threading
+ import time
+ import unicodedata
+-import urllib
++import urllib.request, urllib.parse, urllib.error
+ 
+ from Cheetah.Filters import Filter
+ from lrucache import LRUCache
+ 
+ if os.path.sep == '/':
+-    quote = urllib.quote
+-    unquote = urllib.unquote_plus
++    quote = urllib.parse.quote
++    unquote = urllib.parse.unquote_plus
+ else:
+-    quote = lambda x: urllib.quote(x.replace(os.path.sep, '/'))
+-    unquote = lambda x: os.path.normpath(urllib.unquote_plus(x))
++    quote = lambda x: urllib.parse.quote(x.replace(os.path.sep, '/'))
++    unquote = lambda x: os.path.normpath(urllib.parse.unquote_plus(x))
+ 
+ class Error:
+     CONTENT_TYPE = 'text/html'
+@@ -27,8 +27,8 @@
+         plugin = getattr(module, module.CLASS_NAME)()
+         return plugin
+     except ImportError:
+-        print 'Error no', name, 'plugin exists. Check the type ' \
+-        'setting for your share.'
++        print('Error no', name, 'plugin exists. Check the type ' \
++        'setting for your share.')
+         return Error
+ 
+ class EncodeUnicode(Filter):
+@@ -45,7 +45,7 @@
+                     val = val.decode('macroman')
+                 else:
+                     val = val.decode('cp1252')
+-        elif type(val) != unicode:
++        elif type(val) != str:
+             val = str(val)
+         return val.encode(encoding)
+ 
+@@ -70,7 +70,7 @@
+         pass
+ 
+     def send_file(self, handler, path, query):
+-        handler.send_content_file(unicode(path, 'utf-8'))
++        handler.send_content_file(str(path, 'utf-8'))
+ 
+     def get_local_base_path(self, handler, query):
+         return os.path.normpath(handler.container['path'])
+@@ -147,7 +147,7 @@
+             def __init__(self, name, isdir):
+                 self.name = name
+                 self.isdir = isdir
+-                st = os.stat(unicode(name, 'utf-8'))
++                st = os.stat(str(name, 'utf-8'))
+                 self.mdate = st.st_mtime
+                 self.size = st.st_size
+ 
+@@ -160,7 +160,7 @@
+ 
+         def build_recursive_list(path, recurse=True):
+             files = []
+-            path = unicode(path, 'utf-8')
++            path = str(path, 'utf-8')
+             try:
+                 for f in os.listdir(path):
+                     if f.startswith('.'):
+@@ -193,7 +193,7 @@
+             if path in rc and rc.mtime(path) + 300 >= time.time():
+                 filelist = rc[path]
+         else:
+-            updated = os.path.getmtime(unicode(path, 'utf-8'))
++            updated = os.path.getmtime(str(path, 'utf-8'))
+             if path in dc and dc.mtime(path) >= updated:
+                 filelist = dc[path]
+             for p in rc:
+--- pytivo/turing.py	(original)
++++ pytivo/turing.py	(refactored)
+@@ -69,7 +69,7 @@
+ __author__ = 'William McBrine <wmcbrine@gmail.com>'
+ __version__ = '1.5'
+ 
+-from itertools import izip
++
+ from struct import pack, unpack
+ 
+ # 8->32 _SBOX generated by Millan et. al. at Queensland University of
+@@ -271,7 +271,7 @@
+             sh1 = 8 * l
+             sh2 = 24 - sh1
+             mask = (0xff << sh2) ^ 0xffffffff
+-            for j in xrange(256):
++            for j in range(256):
+                 w = 0
+                 k = j
+                 for i, key in enumerate(mkey):
+@@ -322,10 +322,10 @@
+         self._step()
+         things = _mixwords([self.lfsr[n] for n in (16, 13, 6, 1, 0)])
+         things = _mixwords([self._strans(i, n)
+-                            for i, n in izip(things, (0, 1, 2, 3, 0))])
++                            for i, n in zip(things, (0, 1, 2, 3, 0))])
+         self._step(3)
+         things = [(i + self.lfsr[n]) & 0xffffffff
+-                  for i, n in izip(things, (14, 12, 8, 1, 0))]
++                  for i, n in zip(things, (14, 12, 8, 1, 0))]
+         self._step()
+         return pack('>5L', *things)
+ 
+@@ -352,4 +352,4 @@
+         fmt = '%dB' % len(source)
+         d2 = unpack(fmt, source)
+         x2 = unpack(fmt, xor_data)
+-        return pack(fmt, *(a ^ b for a, b in izip(d2, x2)))
++        return pack(fmt, *(a ^ b for a, b in zip(d2, x2)))
+--- pytivo/zeroconf.py	(original)
++++ pytivo/zeroconf.py	(refactored)
+@@ -32,6 +32,7 @@
+ import threading
+ import select
+ import traceback
++from functools import reduce
+ 
+ __all__ = ["Zeroconf", "ServiceInfo", "ServiceBrowser"]
+ 
+@@ -419,7 +420,7 @@
+ 
+     def readQuestions(self):
+         """Reads questions section of packet"""
+-        for i in xrange(self.numQuestions):
++        for i in range(self.numQuestions):
+             name = self.readName()
+             type, clazz = self.unpack('!HH')
+ 
+@@ -450,7 +451,7 @@
+         """Reads the answers, authorities and additionals section of the
+         packet"""
+         n = self.numAnswers + self.numAuthorities + self.numAdditionals
+-        for i in xrange(n):
++        for i in range(n):
+             domain = self.readName()
+             type, clazz, ttl, length = self.unpack('!HHiH')
+ 
+@@ -489,7 +490,7 @@
+ 
+     def readUTF(self, offset, length):
+         """Reads a UTF-8 string of a given length from the packet"""
+-        return unicode(self.data[offset:offset+length], 'utf-8', 'replace')
++        return str(self.data[offset:offset+length], 'utf-8', 'replace')
+ 
+     def readName(self):
+         """Reads a domain name from the packet"""
+@@ -730,7 +731,7 @@
+         """Returns a list of all entries"""
+         def add(x, y): return x + y
+         try:
+-            return reduce(add, self.cache.values())
++            return reduce(add, list(self.cache.values()))
+         except:
+             return []
+ 
+@@ -779,7 +780,7 @@
+     def getReaders(self):
+         result = []
+         self.condition.acquire()
+-        result = self.readers.keys()
++        result = list(self.readers.keys())
+         self.condition.release()
+         return result
+     
+@@ -815,7 +816,7 @@
+     def handle_read(self):
+         try:
+             data, (addr, port) = self.zc.socket.recvfrom(_MAX_MSG_ABSOLUTE)
+-        except socket.error, e:
++        except socket.error as e:
+             # If the socket was closed by another thread -- which happens
+             # regularly on shutdown -- an EBADF exception is thrown here.
+             # Ignore it.
+@@ -928,7 +929,7 @@
+             if self.nextTime <= now:
+                 out = DNSOutgoing(_FLAGS_QR_QUERY)
+                 out.addQuestion(DNSQuestion(self.type, _TYPE_PTR, _CLASS_IN))
+-                for record in self.services.values():
++                for record in list(self.services.values()):
+                     if not record.isExpired(now):
+                         out.addAnswerAtTime(record, now)
+                 self.zc.send(out)
+@@ -1339,7 +1340,7 @@
+                     now = currentTimeMillis()
+                     continue
+                 out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
+-                for info in self.services.values():
++                for info in list(self.services.values()):
+                     out.addAnswerAtTime(DNSPointer(info.type, _TYPE_PTR,
+                         _CLASS_IN, 0, info.name), 0)
+                     out.addAnswerAtTime(DNSService(info.name, _TYPE_SRV,
+@@ -1446,13 +1447,13 @@
+         for question in msg.questions:
+             if question.type == _TYPE_PTR:
+                 if question.name == "_services._dns-sd._udp.local.":
+-                    for stype in self.servicetypes.keys():
++                    for stype in list(self.servicetypes.keys()):
+                         if out is None:
+                             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
+                         out.addAnswer(msg,
+                             DNSPointer("_services._dns-sd._udp.local.",
+                                        _TYPE_PTR, _CLASS_IN, _DNS_TTL, stype))
+-                for service in self.services.values():
++                for service in list(self.services.values()):
+                     if question.name == service.type:
+                         if out is None:
+                             out = DNSOutgoing(_FLAGS_QR_RESPONSE | _FLAGS_AA)
+@@ -1466,7 +1467,7 @@
+ 
+                     # Answer A record queries for any service addresses we know
+                     if question.type in (_TYPE_A, _TYPE_ANY):
+-                        for service in self.services.values():
++                        for service in list(self.services.values()):
+                             if service.server == question.name.lower():
+                                 out.addAnswer(msg, DNSAddress(question.name,
+                                     _TYPE_A, _CLASS_IN | _CLASS_UNIQUE,
+@@ -1527,26 +1528,26 @@
+ # query (for Zoe), and service unregistration.
+ 
+ if __name__ == '__main__':
+-    print "Multicast DNS Service Discovery for Python, version", __version__
++    print("Multicast DNS Service Discovery for Python, version", __version__)
+     r = Zeroconf()
+-    print "1. Testing registration of a service..."
++    print("1. Testing registration of a service...")
+     desc = {'version':'0.10','a':'test value', 'b':'another value'}
+     info = ServiceInfo("_http._tcp.local.",
+                        "My Service Name._http._tcp.local.",
+                        socket.inet_aton("127.0.0.1"), 1234, 0, 0, desc)
+-    print "   Registering service..."
++    print("   Registering service...")
+     r.registerService(info)
+-    print "   Registration done."
+-    print "2. Testing query of service information..."
+-    print "   Getting ZOE service:",
+-    print str(r.getServiceInfo("_http._tcp.local.", "ZOE._http._tcp.local."))
+-    print "   Query done."
+-    print "3. Testing query of own service..."
+-    print "   Getting self:",
+-    print str(r.getServiceInfo("_http._tcp.local.",
+-                               "My Service Name._http._tcp.local."))
+-    print "   Query done."
+-    print "4. Testing unregister of service information..."
++    print("   Registration done.")
++    print("2. Testing query of service information...")
++    print("   Getting ZOE service:", end=' ')
++    print(str(r.getServiceInfo("_http._tcp.local.", "ZOE._http._tcp.local.")))
++    print("   Query done.")
++    print("3. Testing query of own service...")
++    print("   Getting self:", end=' ')
++    print(str(r.getServiceInfo("_http._tcp.local.",
++                               "My Service Name._http._tcp.local.")))
++    print("   Query done.")
++    print("4. Testing unregister of service information...")
+     r.unregisterService(info)
+-    print "   Unregister done."
++    print("   Unregister done.")
+     r.close()
+--- pytivo/Cheetah/CacheRegion.py	(original)
++++ pytivo/Cheetah/CacheRegion.py	(refactored)
+@@ -118,7 +118,7 @@
+         
+     def clear(self):
+         " drop all the caches stored in this cache region "
+-        for cacheItemId in self._cacheItems.keys():
++        for cacheItemId in list(self._cacheItems.keys()):
+             cacheItem = self._cacheItems[cacheItemId]
+             cacheItem.clear()
+             del self._cacheItems[cacheItemId]
+@@ -133,7 +133,7 @@
+         """
+         cacheItemID = hashlib.md5(str(cacheItemID)).hexdigest()
+         
+-        if not self._cacheItems.has_key(cacheItemID):
++        if cacheItemID not in self._cacheItems:
+             cacheItem = self._cacheItemClass(
+                 cacheItemID=cacheItemID, cacheStore=self._wrappedCacheDataStore)
+             self._cacheItems[cacheItemID] = cacheItem
+--- pytivo/Cheetah/CacheStore.py	(original)
++++ pytivo/Cheetah/CacheStore.py	(refactored)
+@@ -46,12 +46,12 @@
+         self._data[key] = (val, time)
+ 
+     def add(self, key, val, time=0):
+-        if self._data.has_key(key):
++        if key in self._data:
+             raise Error('a value for key %r is already in the cache'%key)
+         self._data[key] = (val, time)
+ 
+     def replace(self, key, val, time=0):
+-        if self._data.has_key(key):
++        if key in self._data:
+             raise Error('a value for key %r is already in the cache'%key)
+         self._data[key] = (val, time)
+ 
+--- pytivo/Cheetah/Compiler.py	(original)
++++ pytivo/Cheetah/Compiler.py	(refactored)
+@@ -27,7 +27,7 @@
+ import time
+ import random
+ import warnings
+-import __builtin__
++import builtins
+ import copy
+ 
+ from Cheetah.Version import Version, VersionTuple
+@@ -1181,14 +1181,14 @@
+         from the methods of this class!!! or you will be assigning to attributes
+         of this object instead."""
+         
+-        if self.__dict__.has_key(name):
++        if name in self.__dict__:
+             return self.__dict__[name]
+         elif hasattr(self.__class__, name):
+             return getattr(self.__class__, name)
+         elif self._activeMethodsList and hasattr(self._activeMethodsList[-1], name):
+             return getattr(self._activeMethodsList[-1], name)
+         else:
+-            raise AttributeError, name
++            raise AttributeError(name)
+ 
+     def _setupState(self):
+         self._classDef = None
+@@ -1374,7 +1374,7 @@
+             'super(%(className)s, self).%(methodName)s(%(argString)s)'%locals())
+ 
+     def addErrorCatcherCall(self, codeChunk, rawCode='', lineCol=''):
+-        if self._placeholderToErrorCatcherMap.has_key(rawCode):
++        if rawCode in self._placeholderToErrorCatcherMap:
+             methodName = self._placeholderToErrorCatcherMap[rawCode]
+             if not self.setting('outputRowColComments'):
+                 self._methodsIndex[methodName].addMethDocString(
+@@ -1552,7 +1552,7 @@
+         
+         if source and file:
+             raise TypeError("Cannot compile from a source string AND file.")
+-        elif isinstance(file, (str, unicode)): # it's a filename.
++        elif isinstance(file, str): # it's a filename.
+             f = open(file) # Raises IOError.
+             source = f.read()
+             f.close()
+@@ -1567,7 +1567,7 @@
+             self._fileDirName, self._fileBaseName = os.path.split(self._filePath)
+             self._fileBaseNameRoot, self._fileBaseNameExt = os.path.splitext(self._fileBaseName)
+ 
+-        if not isinstance(source, (str,unicode)):
++        if not isinstance(source, str):
+             source = str(source)
+             # by converting to string here we allow objects such as other Templates
+             # to be passed in
+@@ -1587,7 +1587,7 @@
+                 source = unicodeDirectiveRE.sub('', source)
+                 if isinstance(source, str):
+                     encoding = unicodeMatch.group(1) or 'ascii'
+-                    source = unicode(source, encoding)
++                    source = str(source, encoding)
+                 
+                 #print encoding
+ 
+@@ -1605,14 +1605,14 @@
+         from the methods of this class!!! or you will be assigning to attributes
+         of this object instead.
+         """
+-        if self.__dict__.has_key(name):
++        if name in self.__dict__:
+             return self.__dict__[name]
+         elif hasattr(self.__class__, name):
+             return getattr(self.__class__, name)
+         elif self._activeClassesList and hasattr(self._activeClassesList[-1], name):
+             return getattr(self._activeClassesList[-1], name)
+         else:
+-            raise AttributeError, name
++            raise AttributeError(name)
+ 
+     def _initializeSettings(self):
+         self.updateSettings(copy.deepcopy(DEFAULT_COMPILER_SETTINGS))
+@@ -1972,7 +1972,7 @@
+     def specialVars(self):
+         chunks = []
+         theVars = self._specialVars
+-        keys = theVars.keys()
++        keys = list(theVars.keys())
+         keys.sort()
+         for key in keys:
+             chunks.append(key + ' = ' + repr(theVars[key])  )
+--- pytivo/Cheetah/Filters.py	(original)
++++ pytivo/Cheetah/Filters.py	(refactored)
+@@ -41,7 +41,7 @@
+                **kw):
+         """Pass Unicode strings through unmolested, unless an encoding is specified.
+         """
+-        if isinstance(val, unicode):
++        if isinstance(val, str):
+             if encoding:
+                 filtered = val.encode(encoding)
+             else:
+@@ -72,7 +72,7 @@
+         ... filter='EncodeUnicode')
+         >>> print t
+         """
+-        if isinstance(val, unicode):
++        if isinstance(val, str):
+             filtered = val.encode(encoding)
+         elif val is None:
+             filtered = ''
+@@ -85,7 +85,7 @@
+         """Replace None with '' and cut off at maxlen."""
+         
+     	output = super(MaxLen, self).filter(val, **kw)
+-        if kw.has_key('maxlen') and len(output) > kw['maxlen']:
++        if 'maxlen' in kw and len(output) > kw['maxlen']:
+             return output[:kw['maxlen']]
+         return output
+ 
+@@ -99,11 +99,11 @@
+         s = s.replace("<", "&lt;")
+         s = s.replace(">", "&gt;")
+         # Process the additional transformations if any.
+-        if kw.has_key('also'):
++        if 'also' in kw:
+             also = kw['also']
+             entities = webSafeEntities   # Global variable.
+             for k in also:
+-                if entities.has_key(k):
++                if k in entities:
+                     v = entities[k]
+                 else:
+                     v = "&#%s;" % ord(k)
+@@ -161,15 +161,15 @@
+ def test():
+     s1 = "abc <=> &"
+     s2 = "   asdf  \n\t  1  2    3\n"
+-    print "WebSafe INPUT:", `s1`
+-    print "      WebSafe:", `WebSafe().filter(s1)`
++    print("WebSafe INPUT:", repr(s1))
++    print("      WebSafe:", repr(WebSafe().filter(s1)))
+     
+-    print
+-    print " Strip INPUT:", `s2`
+-    print "       Strip:", `Strip().filter(s2)`
+-    print "StripSqueeze:", `StripSqueeze().filter(s2)`
++    print()
++    print(" Strip INPUT:", repr(s2))
++    print("       Strip:", repr(Strip().filter(s2)))
++    print("StripSqueeze:", repr(StripSqueeze().filter(s2)))
+ 
+-    print "Unicode:", `EncodeUnicode().filter(u'aoeu12345\u1234')`
++    print("Unicode:", repr(EncodeUnicode().filter('aoeu12345\u1234')))
+     
+ if __name__ == "__main__":  test()
+     
+--- pytivo/Cheetah/NameMapper.py	(original)
++++ pytivo/Cheetah/NameMapper.py	(refactored)
+@@ -139,7 +139,7 @@
+ Start Date: 2001/04/03
+ Last Revision Date: $Date: 2007/04/03 01:58:20 $
+ """
+-from __future__ import generators
++
+ __author__ = "Tavis Rudd <tavis@damnsimple.com>," +\
+              "\nChuck Esterbrook <echuck@mindspring.com>"
+ __revision__ = "$Revision: 1.30 $"[11:-2]
+@@ -147,6 +147,7 @@
+ from types import StringType, InstanceType, ClassType, TypeType
+ from pprint import pformat
+ import inspect
++import collections
+ 
+ _INCLUDE_NAMESPACE_REPR_IN_NOTFOUND_EXCEPTIONS = False
+ _ALLOW_WRAPPING_OF_NOTFOUND_EXCEPTIONS = True
+@@ -188,7 +189,7 @@
+     
+ def hasKey(obj, key):
+     """Determine if 'obj' has 'key' """
+-    if hasattr(obj,'has_key') and obj.has_key(key):
++    if hasattr(obj,'has_key') and key in obj:
+         return True
+     elif hasattr(obj, key):
+         return True
+@@ -196,7 +197,7 @@
+         return False
+ 
+ def valueForKey(obj, key):
+-    if hasattr(obj, 'has_key') and obj.has_key(key):
++    if hasattr(obj, 'has_key') and key in obj:
+         return obj[key]
+     elif hasattr(obj, key):
+         return getattr(obj, key)
+@@ -207,14 +208,14 @@
+     nameChunks=name.split('.')
+     for i in range(len(nameChunks)):
+         key = nameChunks[i]
+-        if hasattr(obj, 'has_key') and obj.has_key(key):
++        if hasattr(obj, 'has_key') and key in obj:
+             nextObj = obj[key]
+         elif hasattr(obj, key):
+             nextObj = getattr(obj, key)
+         else:
+             _raiseNotFoundException(key, obj)
+         
+-        if (executeCallables and callable(nextObj)
++        if (executeCallables and isinstance(nextObj, collections.Callable)
+             and (type(nextObj) not in (InstanceType, ClassType))):
+             obj = nextObj()
+         else:
+@@ -224,7 +225,7 @@
+ def valueForName(obj, name, executeCallables=False):
+     try:
+         return _valueForName(obj, name, executeCallables)
+-    except NotFound, e:
++    except NotFound as e:
+         _wrapNotFoundException(e, fullName=name, namespace=obj)
+ 
+ def valueFromSearchList(searchList, name, executeCallables=False):
+@@ -248,7 +249,7 @@
+     def __valueForName():
+         try:
+             return _valueForName(namespace, name, executeCallables=executeCallables)
+-        except NotFound, e:
++        except NotFound as e:
+             _wrapNotFoundException(e, fullName=name, namespace=searchList)
+     try:
+         if not frame:
+@@ -340,13 +341,13 @@
+         }
+     b = 'this is local b'
+ 
+-    print valueForKey(a.dic,'subDict')
+-    print valueForName(a, 'dic.item')
+-    print valueForName(vars(), 'b')
+-    print valueForName(__builtins__, 'dir')()
+-    print valueForName(vars(), 'a.classVar')
+-    print valueForName(vars(), 'a.dic.func', executeCallables=True)
+-    print valueForName(vars(), 'a.method2.item1', executeCallables=True)
++    print(valueForKey(a.dic,'subDict'))
++    print(valueForName(a, 'dic.item'))
++    print(valueForName(vars(), 'b'))
++    print(valueForName(__builtins__, 'dir')())
++    print(valueForName(vars(), 'a.classVar'))
++    print(valueForName(vars(), 'a.dic.func', executeCallables=True))
++    print(valueForName(vars(), 'a.method2.item1', executeCallables=True))
+ 
+ if __name__ == '__main__':
+     example()
+--- pytivo/Cheetah/Parser.py	(original)
++++ pytivo/Cheetah/Parser.py	(refactored)
+@@ -34,6 +34,7 @@
+ from Cheetah import ErrorCatchers
+ from Cheetah.Unspecified import Unspecified
+ from Cheetah.Macros.I18n import I18n
++import collections
+ 
+ # re tools
+ _regexCache = {}
+@@ -52,8 +53,8 @@
+ def group(*choices): return '(' + '|'.join(choices) + ')'
+ def nongroup(*choices): return '(?:' + '|'.join(choices) + ')'
+ def namedGroup(name, *choices): return '(P:<' + name +'>' + '|'.join(choices) + ')'
+-def any(*choices): return apply(group, choices) + '*'
+-def maybe(*choices): return apply(group, choices) + '?'
++def any(*choices): return group(*choices) + '*'
++def maybe(*choices): return group(*choices) + '?'
+ 
+ ##################################################
+ ## CONSTANTS & GLOBALS ##
+@@ -135,7 +136,7 @@
+     end = escapeRegexChars(end)
+     return re.compile(r'(?:' + start + r').*?' + r'(?:' + end + r')', re.DOTALL)
+ 
+-for start, end in tripleQuotedStringPairs.items():
++for start, end in list(tripleQuotedStringPairs.items()):
+     tripleQuotedStringREs[start] = makeTripleQuoteRe(start, end)
+ 
+ WS = r'[ \f\t]*'  
+@@ -337,7 +338,7 @@
+         self.argNames.append( name )
+         self.defVals.append( None )
+ 
+-    def next(self):
++    def __next__(self):
+         self.i += 1
+ 
+     def addToDefVal(self, token):
+@@ -665,7 +666,7 @@
+ 
+     def matchDirectiveName(self, directiveNameChars=identchars+'0123456789-@'):
+         startPos = self.pos()
+-        possibleMatches = self._directiveNamesAndParsers.keys()
++        possibleMatches = list(self._directiveNamesAndParsers.keys())
+         name = ''
+         match = None
+ 
+@@ -1013,7 +1014,7 @@
+                 onDefVal = True
+                 self.advance()
+             elif c == ",":
+-                argList.next()
++                next(argList)
+                 onDefVal = False
+                 self.advance()
+             elif self.startswith(self.cheetahVarStartToken) and not onDefVal:
+@@ -1315,7 +1316,7 @@
+         """Cleanup to remove any possible reference cycles
+         """
+         self._macros.clear()
+-        for macroname, macroDetails in self._macroDetails.items():
++        for macroname, macroDetails in list(self._macroDetails.items()):
+             macroDetails.template.shutdown()
+             del macroDetails.template
+         self._macroDetails.clear()
+@@ -1326,11 +1327,11 @@
+     
+     def _initDirectives(self):
+         def normalizeParserVal(val):
+-            if isinstance(val, (str,unicode)):
++            if isinstance(val, str):
+                 handler = getattr(self, val)
+             elif type(val) in (ClassType, TypeType):
+                 handler = val(self)
+-            elif callable(val):
++            elif isinstance(val, collections.Callable):
+                 handler = val
+             elif val is None:
+                 handler = val
+@@ -1349,13 +1350,13 @@
+         _endDirectiveNamesAndHandlers.update(customNamesAndHandlers)        
+         
+         self._directiveNamesAndParsers = {}
+-        for name, val in _directiveNamesAndParsers.items():
++        for name, val in list(_directiveNamesAndParsers.items()):
+             if val in (False, 0):
+                 continue
+             self._directiveNamesAndParsers[name] = normalizeParserVal(val)
+ 
+         self._endDirectiveNamesAndHandlers = {}        
+-        for name, val in _endDirectiveNamesAndHandlers.items():
++        for name, val in list(_endDirectiveNamesAndHandlers.items()):
+             if val in (False, 0):
+                 continue
+             self._endDirectiveNamesAndHandlers[name] = normalizeHandlerVal(val)
+@@ -1378,7 +1379,7 @@
+         macroDirectives['i18n'] = I18n
+ 
+ 
+-        for macroName, callback in macroDirectives.items():
++        for macroName, callback in list(macroDirectives.items()):
+             if type(callback) in (ClassType, TypeType):
+                 callback = callback(parser=self)
+             assert callback                
+@@ -1711,7 +1712,7 @@
+         self.getWhiteSpace()
+         pos = self.pos()
+         directiveName = False
+-        for key in self._endDirectiveNamesAndHandlers.keys():
++        for key in list(self._endDirectiveNamesAndHandlers.keys()):
+             if self.find(key, pos) == pos:
+                 directiveName = key
+                 break
+@@ -1819,12 +1820,12 @@
+             self._compiler.setCompilerSetting(settingName, valueExpr)
+         except:
+             out = sys.stderr
+-            print >> out, 'An error occurred while processing the following #compiler directive.'
+-            print >> out, '-'*80
+-            print >> out, self[startPos:endPos]
+-            print >> out, '-'*80
+-            print >> out, 'Please check the syntax of these settings.'
+-            print >> out, 'A full Python exception traceback follows.'
++            print('An error occurred while processing the following #compiler directive.', file=out)
++            print('-'*80, file=out)
++            print(self[startPos:endPos], file=out)
++            print('-'*80, file=out)
++            print('Please check the syntax of these settings.', file=out)
++            print('A full Python exception traceback follows.', file=out)
+             raise
+ 
+ 
+@@ -1855,12 +1856,12 @@
+             self._compiler.setCompilerSettings(keywords=keywords, settingsStr=settingsStr)
+         except:
+             out = sys.stderr
+-            print >> out, 'An error occurred while processing the following compiler settings.'
+-            print >> out, '-'*80
+-            print >> out, settingsStr.strip()
+-            print >> out, '-'*80
+-            print >> out, 'Please check the syntax of these settings.'
+-            print >> out, 'A full Python exception traceback follows.'
++            print('An error occurred while processing the following compiler settings.', file=out)
++            print('-'*80, file=out)
++            print(settingsStr.strip(), file=out)
++            print('-'*80, file=out)
++            print('Please check the syntax of these settings.', file=out)
++            print('A full Python exception traceback follows.', file=out)
+             raise
+ 
+     def eatAttr(self):
+@@ -2210,7 +2211,7 @@
+         else:
+             argsList=[]
+ 
+-        assert not self._directiveNamesAndParsers.has_key(macroName)
++        assert macroName not in self._directiveNamesAndParsers
+         argsList.insert(0, ('src',None))
+         argsList.append(('parser','None'))
+         argsList.append(('macros','None'))
+@@ -2308,18 +2309,18 @@
+         else:
+             def getArgs(*pargs, **kws):
+                 return pargs, kws
+-            exec 'positionalArgs, kwArgs = getArgs(%(args)s)'%locals()
+-
+-        assert not kwArgs.has_key('src')
++            exec('positionalArgs, kwArgs = getArgs(%(args)s)'%locals())
++
++        assert 'src' not in kwArgs
+         kwArgs['src'] = srcBlock
+ 
+         if type(macro)==new.instancemethod:
+-            co = macro.im_func.func_code
++            co = macro.__func__.__code__
+         elif (hasattr(macro, '__call__')
+               and hasattr(macro.__call__, 'im_func')):
+-            co = macro.__call__.im_func.func_code
+-        else:
+-            co = macro.func_code
++            co = macro.__call__.__func__.__code__
++        else:
++            co = macro.__code__
+         availableKwArgs = inspect.getargs(co)[0]
+         
+         if 'parser' in availableKwArgs:
+--- pytivo/Cheetah/SettingsManager.py	(original)
++++ pytivo/Cheetah/SettingsManager.py	(refactored)
+@@ -21,7 +21,7 @@
+ import sys
+ import os.path
+ import copy as copyModule
+-from ConfigParser import ConfigParser 
++from configparser import ConfigParser 
+ import re
+ from tokenize import Intnumber, Floatnumber, Number
+ from types import *
+@@ -29,7 +29,7 @@
+ import new
+ import tempfile
+ import time
+-from StringIO import StringIO # not cStringIO because of unicode support
++from io import StringIO # not cStringIO because of unicode support
+ import imp                 # used by SettingsManager.updateSettingsFromPySrcFile()
+ 
+ try:
+@@ -76,9 +76,9 @@
+     elif deepcopy:
+         dict1 = copyModule.deepcopy(dict1)
+         
+-    for key,val in dict2.items():
+-        if dict1.has_key(key) and type(val) == types.DictType and \
+-           type(dict1[key]) == types.DictType:
++    for key,val in list(dict2.items()):
++        if key in dict1 and type(val) == dict and \
++           type(dict1[key]) == dict:
+             
+             dict1[key] = mergeNestedDictionaries(dict1[key], val)
+         else:
+@@ -245,7 +245,7 @@
+         else:
+             attrs = self._getAllAttrsFromContainer(container)
+     
+-        for k, v in attrs.items():
++        for k, v in list(attrs.items()):
+             if (ignoreUnderscored and k.startswith('_')) or v is SettingsContainer:
+                 continue
+             if self._isContainer(v):
+@@ -280,8 +280,8 @@
+         attrs.update( container().__dict__ ) 
+         
+         for base in container.__bases__:
+-            for k, v in base.__dict__.items():
+-                if not attrs.has_key(k):
++            for k, v in list(base.__dict__.items()):
++                if k not in attrs:
+                     attrs[k] = v
+         return attrs
+ 
+@@ -335,7 +335,7 @@
+                        'SettingsContainer':SettingsContainer,
+                        }
+         newSettings = {'self':self}
+-        exec theString in globalsDict, newSettings
++        exec(theString, globalsDict, newSettings)
+         del newSettings['self'], newSettings['True'], newSettings['False']
+         module = new.module('temp_settings_module')
+         module.__dict__.update(newSettings)
+@@ -394,8 +394,8 @@
+         ## loop through new settings -> deal with global settings, numbers,
+         ## booleans and None ++ also deal with 'importSettings' commands
+ 
+-        for sect, subDict in newSettings.items():
+-            for key, val in subDict.items():
++        for sect, subDict in list(newSettings.items()):
++            for key, val in list(subDict.items()):
+                 if convert:
+                     if val.lower().startswith('python:'):
+                         subDict[key] = eval(val[7:],{},{})
+@@ -472,7 +472,7 @@
+ 
+     def hasSetting(self, key):
+         """True/False"""
+-        return self._settings.has_key(key)
++        return key in self._settings
+ 
+     def setSetting(self, name, value):
+         """Set a setting in self._settings."""
+@@ -576,23 +576,23 @@
+         iniSettings = {'Globals':{}}
+         globals = iniSettings['Globals']
+         
+-        for key, theSetting in self.settings().items():
++        for key, theSetting in list(self.settings().items()):
+             if type(theSetting) in convertableToStrTypes:
+                 globals[key] = theSetting
+             if type(theSetting) is DictType:
+                 iniSettings[key] = {}
+-                for subKey, subSetting in theSetting.items():
++                for subKey, subSetting in list(theSetting.items()):
+                     if type(subSetting) in convertableToStrTypes:
+                         iniSettings[key][subKey] = subSetting
+         
+-        sections = iniSettings.keys()
++        sections = list(iniSettings.keys())
+         sections.sort()
+         outFileWrite = outFile.write # short-cut namebinding for efficiency
+         for section in sections:
+             outFileWrite("[" + section + "]\n")
+             sectDict = iniSettings[section]
+             
+-            keys = sectDict.keys()
++            keys = list(sectDict.keys())
+             keys.sort()
+             for key in keys:
+                 if key == "__name__":
+--- pytivo/Cheetah/SourceReader.py	(original)
++++ pytivo/Cheetah/SourceReader.py	(refactored)
+@@ -161,7 +161,7 @@
+         self._posTobookmarkMap[self._pos] = name
+ 
+     def hasBookmark(self, name):
+-        return self._bookmarks.has_key(name)
++        return name in self._bookmarks
+     
+     def gotoBookmark(self, name):
+         if not self.hasBookmark(name):
+@@ -269,7 +269,7 @@
+         return BOL == pos or src[BOL:pos].isspace()
+ 
+     def matches(self, strOrRE):
+-        if isinstance(strOrRE, (str, unicode)):
++        if isinstance(strOrRE, str):
+             return self.startswith(strOrRE, pos=self.pos())
+         else: # assume an re object
+             return strOrRE.match(self.src(), self.pos())
+--- pytivo/Cheetah/Template.py	(original)
++++ pytivo/Cheetah/Template.py	(refactored)
+@@ -27,16 +27,17 @@
+ from random import randrange
+ import imp
+ import inspect
+-import StringIO
++import io
+ import traceback
+ import pprint
+ import cgi                # Used by .webInput() if the template is a CGI script.
+ import types 
+ from types import StringType, ClassType
++import collections
+ try:
+     from types import StringTypes
+ except ImportError:
+-    StringTypes = (types.StringType,types.UnicodeType)
++    StringTypes = (bytes,str)
+ try:
+     from types import BooleanType
+     boolTypeAvailable = True
+@@ -85,7 +86,7 @@
+     return hash(tuple(hashedList))
+ 
+ def hashDict(d):
+-    items = d.items()
++    items = list(d.items())
+     items.sort()
+     hashedList = []
+     for k, v in items:
+@@ -146,7 +147,7 @@
+         """
+         settings = self._settings
+         if not source: # @@TR: this needs improving
+-            if isinstance(file, (str, unicode)): # it's a filename.
++            if isinstance(file, str): # it's a filename.
+                 f = open(file)
+                 source = f.read()
+                 f.close()
+@@ -157,7 +158,7 @@
+         templateAPIClass = settings.templateAPIClass
+         possibleKwArgs = [
+             arg for arg in
+-            inspect.getargs(templateAPIClass.compile.im_func.func_code)[0]
++            inspect.getargs(templateAPIClass.compile.__func__.__code__)[0]
+             if arg not in ('klass', 'source', 'file',)]
+ 
+         compileKwArgs = {}
+@@ -587,13 +588,13 @@
+         try:
+             vt = VerifyType.VerifyType
+             vtc = VerifyType.VerifyTypeClass
+-            N = types.NoneType; S = types.StringType; U = types.UnicodeType
+-            D = types.DictType; F = types.FileType
+-            C = types.ClassType;  M = types.ModuleType
+-            I = types.IntType
++            N = type(None); S = bytes; U = str
++            D = dict; F = types.FileType
++            C = type;  M = types.ModuleType
++            I = int
+ 
+             if boolTypeAvailable:         
+-                B = types.BooleanType
++                B = bool
+             
+             vt(source, 'source', [N,S,U], 'string or None')
+             vt(file, 'file',[N,S,U,F], 'string, file-like object, or None')
+@@ -655,7 +656,7 @@
+                 cacheDirForModuleFiles, klass._CHEETAH_cacheDirForModuleFiles)
+             vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N,S], 'string or None')
+ 
+-        except TypeError, reason:
++        except TypeError as reason:
+             raise TypeError(reason)
+ 
+         ##################################################           
+@@ -679,7 +680,7 @@
+ 
+         cacheHash = None
+         cacheItem = None
+-        if source or isinstance(file, (str, unicode)):                
++        if source or isinstance(file, str):                
+             compilerSettingsHash = None
+             if compilerSettings:
+                 compilerSettingsHash = hashDict(compilerSettings)
+@@ -753,7 +754,7 @@
+ 
+                 mod = new.module(uniqueModuleName)
+                 if moduleGlobals:
+-                    for k, v in moduleGlobals.items():
++                    for k, v in list(moduleGlobals.items()):
+                         setattr(mod, k, v)
+                 mod.__file__ = __file__
+                 if __orig_file__ and os.path.exists(__orig_file__):
+@@ -765,8 +766,8 @@
+                 ##
+                 try:
+                     co = compile(generatedModuleCode, __file__, 'exec')
+-                    exec co in mod.__dict__
+-                except SyntaxError, e:
++                    exec(co, mod.__dict__)
++                except SyntaxError as e:
+                     try:
+                         parseError = genParserErrorFromPythonException(
+                             source, file, generatedModuleCode, exception=e)
+@@ -777,7 +778,7 @@
+                         raise e
+                     else:
+                         raise parseError
+-                except Exception, e:
++                except Exception as e:
+                     updateLinecache(__file__, generatedModuleCode)
+                     e.generatedModuleCode = generatedModuleCode
+                     raise
+@@ -845,7 +846,7 @@
+         
+         if hasattr(arg, 'preprocess'):
+             return arg
+-        elif callable(arg):
++        elif isinstance(arg, collections.Callable):
+             class WrapperPreprocessor:
+                 def preprocess(self, source, file):
+                     return arg(source, file)
+@@ -858,7 +859,7 @@
+             if isinstance(arg, str) or isinstance(arg, (list, tuple)):
+                 settings.tokens = arg
+             elif isinstance(arg, dict):
+-                for k, v in arg.items():
++                for k, v in list(arg.items()):
+                     setattr(settings, k, v)   
+             else:
+                 settings = arg
+@@ -907,7 +908,7 @@
+             normalizeSearchList(settings.templateInitArgs['searchList']))
+             
+         if not hasattr(settings, 'outputTransformer'):
+-            settings.outputTransformer = unicode
++            settings.outputTransformer = str
+ 
+         if not hasattr(settings, 'templateAPIClass'):
+             class PreprocessTemplateAPIClass(klass): pass
+@@ -958,14 +959,14 @@
+         for methodname in klass._CHEETAH_requiredCheetahMethods:
+             if not hasattr(concreteTemplateClass, methodname):
+                 method = getattr(Template, methodname)
+-                newMethod = new.instancemethod(method.im_func, None, concreteTemplateClass)
++                newMethod = new.instancemethod(method.__func__, None, concreteTemplateClass)
+                 #print methodname, method
+                 setattr(concreteTemplateClass, methodname, newMethod)
+ 
+         for classMethName in klass._CHEETAH_requiredCheetahClassMethods:
+             if not hasattr(concreteTemplateClass, classMethName):
+                 meth = getattr(klass, classMethName)
+-                setattr(concreteTemplateClass, classMethName, classmethod(meth.im_func))
++                setattr(concreteTemplateClass, classMethName, classmethod(meth.__func__))
+             
+         for attrname in klass._CHEETAH_requiredCheetahClassAttributes:
+             attrname = '_CHEETAH_'+attrname
+@@ -1124,11 +1125,11 @@
+         ##################################################           
+         ## Verify argument keywords and types
+ 
+-        S = types.StringType; U = types.UnicodeType
+-        L = types.ListType;   T = types.TupleType
+-        D = types.DictType;   F = types.FileType
+-        C = types.ClassType;  M = types.ModuleType
+-        N = types.NoneType
++        S = bytes; U = str
++        L = list;   T = tuple
++        D = dict;   F = types.FileType
++        C = type;  M = types.ModuleType
++        N = type(None)
+         vt = VerifyType.VerifyType
+         vtc = VerifyType.VerifyTypeClass
+         try:
+@@ -1145,7 +1146,7 @@
+             if compilerSettings is not Unspecified:
+                 vt(compilerSettings, 'compilerSettings', [D], 'dictionary')
+ 
+-        except TypeError, reason:
++        except TypeError as reason:
+             # Re-raise the exception here so that the traceback will end in
+             # this function rather than in some utility function.
+             raise TypeError(reason)
+@@ -1491,7 +1492,7 @@
+         """Called at runtime to handle #include directives.
+         """
+         _includeID = srcArg            
+-        if not self._CHEETAH__cheetahIncludes.has_key(_includeID):
++        if _includeID not in self._CHEETAH__cheetahIncludes:
+             if not raw:
+                 if includeFrom == 'file':
+                     source = None
+@@ -1769,7 +1770,7 @@
+         # 'dic = super(ThisClass, self).webInput(names, namesMulti, ...)'
+         # and then the code below.
+         if debug:
+-           print "<PRE>\n" + pprint.pformat(dic) + "\n</PRE>\n\n"
++           print("<PRE>\n" + pprint.pformat(dic) + "\n</PRE>\n\n")
+         self.searchList().insert(0, dic)
+         return dic
+ 
+@@ -1780,9 +1781,9 @@
+ 
+     #print dir(exception)
+     
+-    filename = isinstance(file, (str, unicode)) and file or None
+-
+-    sio = StringIO.StringIO()
++    filename = isinstance(file, str) and file or None
++
++    sio = io.StringIO()
+     traceback.print_exc(1, sio)
+     formatedExc = sio.getvalue()
+     
+--- pytivo/Cheetah/Version.py	(original)
++++ pytivo/Cheetah/Version.py	(refactored)
+@@ -32,11 +32,11 @@
+ 
+ if __name__ == '__main__':
+     c = convertVersionStringToTuple
+-    print c('2.0a1')
+-    print c('2.0b1')
+-    print c('2.0rc1')
+-    print c('2.0')
+-    print c('2.0.2')
++    print(c('2.0a1'))
++    print(c('2.0b1'))
++    print(c('2.0rc1'))
++    print(c('2.0'))
++    print(c('2.0.2'))
+ 
+ 
+     assert c('0.9.19b1') < c('0.9.19')
+--- pytivo/Cheetah/__init__.py	(original)
++++ pytivo/Cheetah/__init__.py	(refactored)
+@@ -24,4 +24,4 @@
+ __author__ = "Tavis Rudd <tavis@damnsimple.com>"
+ __revision__ = "$Revision: 1.10 $"[11:-2]
+ 
+-from Version import Version
++from .Version import Version
+--- pytivo/Cheetah/Utils/Misc.py	(original)
++++ pytivo/Cheetah/Utils/Misc.py	(refactored)
+@@ -30,7 +30,7 @@
+ 
+     Called by: Cheetah.Servlet.cgiImport()
+     """
+-    if type(thing) == types.ClassType and issubclass(thing, Exception):
++    if type(thing) == type and issubclass(thing, Exception):
+         raise thing(errmsg)
+     return thing
+ 
+@@ -46,7 +46,7 @@
+     called by: Cheetah.Template.__init__()
+     """
+     # XXX legalKeywords could be a set when sets get added to Python.
+-    for k in dic.keys(): # Can be dic.iterkeys() if Python >= 2.2.
++    for k in list(dic.keys()): # Can be dic.iterkeys() if Python >= 2.2.
+         if k not in legalKeywords: 
+             raise TypeError("'%s' is not a valid %s" % (k, what))
+ 
+--- pytivo/Cheetah/Utils/VerifyType.py	(original)
++++ pytivo/Cheetah/Utils/VerifyType.py	(refactored)
+@@ -68,7 +68,7 @@
+     """
+     VerifyType(arg, argname, legalTypes, ltd, errmsgExtra)
+     # If no exception, the arg is a legal type.
+-    if type(arg) == types.ClassType and not issubclass(arg, klass):
++    if type(arg) == type and not issubclass(arg, klass):
+         # Must test for "is class type" to avoid TypeError from issubclass().
+         m = _errmsg(argname, ltd, errmsgExtra)
+         raise TypeError(m)
+--- pytivo/Cheetah/Utils/memcache.py	(original)
++++ pytivo/Cheetah/Utils/memcache.py	(refactored)
+@@ -48,7 +48,7 @@
+ import time
+ import types
+ try:
+-    import cPickle as pickle
++    import pickle as pickle
+ except ImportError:
+     import pickle
+ 
+@@ -150,7 +150,7 @@
+             sys.stderr.write("MemCached: %s\n" % str)
+ 
+     def _statlog(self, func):
+-        if not self.stats.has_key(func):
++        if func not in self.stats:
+             self.stats[func] = 1
+         else:
+             self.stats[func] += 1
+@@ -169,7 +169,7 @@
+                 self.buckets.append(server)
+ 
+     def _get_server(self, key):
+-        if type(key) == types.TupleType:
++        if type(key) == tuple:
+             serverhash = key[0]
+             key = key[1]
+         else:
+@@ -205,7 +205,7 @@
+         try:
+             server.send_cmd(cmd)
+             server.expect("DELETED")
+-        except socket.error, msg:
++        except socket.error as msg:
+             server.mark_dead(msg[1])
+             return 0
+         return 1
+@@ -257,7 +257,7 @@
+             server.send_cmd(cmd)
+             line = server.readline()
+             return int(line)
+-        except socket.error, msg:
++        except socket.error as msg:
+             server.mark_dead(msg[1])
+             return None
+ 
+@@ -303,12 +303,12 @@
+         self._statlog(cmd)
+ 
+         flags = 0
+-        if isinstance(val, types.StringTypes):
++        if isinstance(val, (str,)):
+             pass
+         elif isinstance(val, int):
+             flags |= Client._FLAG_INTEGER
+             val = "%d" % val
+-        elif isinstance(val, long):
++        elif isinstance(val, int):
+             flags |= Client._FLAG_LONG
+             val = "%d" % val
+         elif self._usePickle:
+@@ -321,7 +321,7 @@
+         try:
+             server.send_cmd(fullcmd)
+             server.expect("STORED")
+-        except socket.error, msg:
++        except socket.error as msg:
+             server.mark_dead(msg[1])
+             return 0
+         return 1
+@@ -344,8 +344,8 @@
+                 return None
+             value = self._recv_value(server, flags, rlen)
+             server.expect("END")
+-        except (_Error, socket.error), msg:
+-            if type(msg) is types.TupleType:
++        except (_Error, socket.error) as msg:
++            if type(msg) is tuple:
+                 msg = msg[1]
+             server.mark_dead(msg)
+             return None
+@@ -379,16 +379,16 @@
+             server, key = self._get_server(key)
+             if not server:
+                 continue
+-            if not server_keys.has_key(server):
++            if server not in server_keys:
+                 server_keys[server] = []
+             server_keys[server].append(key)
+ 
+         # send out all requests on each server before reading anything
+         dead_servers = []
+-        for server in server_keys.keys():
++        for server in list(server_keys.keys()):
+             try:
+                 server.send_cmd("get %s" % " ".join(server_keys[server]))
+-            except socket.error, msg:
++            except socket.error as msg:
+                 server.mark_dead(msg[1])
+                 dead_servers.append(server)
+ 
+@@ -397,7 +397,7 @@
+             del server_keys[server]
+ 
+         retvals = {}
+-        for server in server_keys.keys():
++        for server in list(server_keys.keys()):
+             try:
+                 line = server.readline()
+                 while line and line != 'END':
+@@ -407,7 +407,7 @@
+                         val = self._recv_value(server, flags, rlen)
+                         retvals[rkey] = val
+                     line = server.readline()
+-            except (_Error, socket.error), msg:
++            except (_Error, socket.error) as msg:
+                 server.mark_dead(msg)
+         return retvals
+ 
+@@ -437,7 +437,7 @@
+         elif flags & Client._FLAG_INTEGER:
+             val = int(buf)
+         elif flags & Client._FLAG_LONG:
+-            val = long(buf)
++            val = int(buf)
+         elif self._usePickle and flags & Client._FLAG_PICKLE:
+             try:
+                 val = pickle.loads(buf)
+@@ -453,7 +453,7 @@
+     _DEAD_RETRY = 30  # number of seconds before retrying a dead server.
+ 
+     def __init__(self, host, debugfunc=None):
+-        if isinstance(host, types.TupleType):
++        if isinstance(host, tuple):
+             host = host[0]
+             self.weight = host[1]
+         else:
+@@ -497,7 +497,7 @@
+         # Python 2.3-ism:  s.settimeout(1)
+         try:
+             s.connect((self.ip, self.port))
+-        except socket.error, msg:
++        except socket.error as msg:
+             self.mark_dead("connect: %s" % msg[1])
+             return None
+         self.socket = s
+@@ -556,27 +556,27 @@
+     return doctest.testmod(memcache, globs=globs)
+ 
+ if __name__ == "__main__":
+-    print "Testing docstrings..."
++    print("Testing docstrings...")
+     _doctest()
+-    print "Running tests:"
+-    print
++    print("Running tests:")
++    print()
+     #servers = ["127.0.0.1:11211", "127.0.0.1:11212"]
+     servers = ["127.0.0.1:11211"]
+     mc = Client(servers, debug=1)
+ 
+     def to_s(val):
+-        if not isinstance(val, types.StringTypes):
++        if not isinstance(val, (str,)):
+             return "%s (%s)" % (val, type(val))
+         return "%s" % val
+     def test_setget(key, val):
+-        print "Testing set/get {'%s': %s} ..." % (to_s(key), to_s(val)),
++        print("Testing set/get {'%s': %s} ..." % (to_s(key), to_s(val)), end=' ')
+         mc.set(key, val)
+         newval = mc.get(key)
+         if newval == val:
+-            print "OK"
++            print("OK")
+             return 1
+         else:
+-            print "FAIL"
++            print("FAIL")
+             return 0
+ 
+     class FooStruct:
+@@ -591,34 +591,34 @@
+         
+     test_setget("a_string", "some random string")
+     test_setget("an_integer", 42)
+-    if test_setget("long", long(1<<30)):
+-        print "Testing delete ...",
++    if test_setget("long", int(1<<30)):
++        print("Testing delete ...", end=' ')
+         if mc.delete("long"):
+-            print "OK"
+-        else:
+-            print "FAIL"
+-    print "Testing get_multi ...",
+-    print mc.get_multi(["a_string", "an_integer"])
+-
+-    print "Testing get(unknown value) ...",
+-    print to_s(mc.get("unknown_value"))
++            print("OK")
++        else:
++            print("FAIL")
++    print("Testing get_multi ...", end=' ')
++    print(mc.get_multi(["a_string", "an_integer"]))
++
++    print("Testing get(unknown value) ...", end=' ')
++    print(to_s(mc.get("unknown_value")))
+ 
+     f = FooStruct()
+     test_setget("foostruct", f)
+ 
+-    print "Testing incr ...",
++    print("Testing incr ...", end=' ')
+     x = mc.incr("an_integer", 1)
+     if x == 43:
+-        print "OK"
++        print("OK")
+     else:
+-        print "FAIL"
+-
+-    print "Testing decr ...",
++        print("FAIL")
++
++    print("Testing decr ...", end=' ')
+     x = mc.decr("an_integer", 1)
+     if x == 42:
+-        print "OK"
++        print("OK")
+     else:
+-        print "FAIL"
++        print("FAIL")
+ 
+ 
+ 
+--- pytivo/mutagen/__init__.py	(original)
++++ pytivo/mutagen/__init__.py	(refactored)
+@@ -82,7 +82,7 @@
+ 
+         If the file has no tags at all, a KeyError is raised.
+         """
+-        if self.tags is None: raise KeyError, key
++        if self.tags is None: raise KeyError(key)
+         else: return self.tags[key]
+ 
+     def __setitem__(self, key, value):
+@@ -100,7 +100,7 @@
+ 
+         If the file has no tags at all, a KeyError is raised.
+         """
+-        if self.tags is None: raise KeyError, key
++        if self.tags is None: raise KeyError(key)
+         else: del(self.tags[key])
+ 
+     def keys(self):
+@@ -109,7 +109,7 @@
+         If the file has no tags at all, an empty list is returned.
+         """
+         if self.tags is None: return []
+-        else: return self.tags.keys()
++        else: return list(self.tags.keys())
+ 
+     def delete(self, filename=None):
+         """Remove tags from a file."""
+@@ -210,7 +210,7 @@
+                    for Kind in options]
+     finally:
+         fileobj.close()
+-    results = zip(results, options)
++    results = list(zip(results, options))
+     results.sort()
+     (score, name), Kind = results[-1]
+     if score > 0: return Kind(filename)
+--- pytivo/mutagen/_constants.py	(original)
++++ pytivo/mutagen/_constants.py	(refactored)
+@@ -1,153 +1,153 @@
+ """Constants used by Mutagen."""
+ 
+ GENRES = [
+-    u"Blues",
+-    u"Classic Rock",
+-    u"Country",
+-    u"Dance",
+-    u"Disco",
+-    u"Funk",
+-    u"Grunge",
+-    u"Hip-Hop",
+-    u"Jazz",
+-    u"Metal",
+-    u"New Age",
+-    u"Oldies",
+-    u"Other",
+-    u"Pop",
+-    u"R&B",
+-    u"Rap",
+-    u"Reggae",
+-    u"Rock",
+-    u"Techno",
+-    u"Industrial",
+-    u"Alternative",
+-    u"Ska",
+-    u"Death Metal",
+-    u"Pranks",
+-    u"Soundtrack",
+-    u"Euro-Techno",
+-    u"Ambient",
+-    u"Trip-Hop",
+-    u"Vocal",
+-    u"Jazz+Funk",
+-    u"Fusion",
+-    u"Trance",
+-    u"Classical",
+-    u"Instrumental",
+-    u"Acid",
+-    u"House",
+-    u"Game",
+-    u"Sound Clip",
+-    u"Gospel",
+-    u"Noise",
+-    u"Alt. Rock",
+-    u"Bass",
+-    u"Soul",
+-    u"Punk",
+-    u"Space",
+-    u"Meditative",
+-    u"Instrumental Pop",
+-    u"Instrumental Rock",
+-    u"Ethnic",
+-    u"Gothic",
+-    u"Darkwave",
+-    u"Techno-Industrial",
+-    u"Electronic",
+-    u"Pop-Folk",
+-    u"Eurodance",
+-    u"Dream",
+-    u"Southern Rock",
+-    u"Comedy",
+-    u"Cult",
+-    u"Gangsta",
+-    u"Top 40",
+-    u"Christian Rap",
+-    u"Pop/Funk",
+-    u"Jungle",
+-    u"Native American",
+-    u"Cabaret",
+-    u"New Wave",
+-    u"Psychadelic",
+-    u"Rave",
+-    u"Showtunes",
+-    u"Trailer",
+-    u"Lo-Fi",
+-    u"Tribal",
+-    u"Acid Punk",
+-    u"Acid Jazz",
+-    u"Polka",
+-    u"Retro",
+-    u"Musical",
+-    u"Rock & Roll",
+-    u"Hard Rock",
+-    u"Folk",
+-    u"Folk/Rock",
+-    u"National Folk",
+-    u"Swing",
+-    u"Fusion",
+-    u"Bebob",
+-    u"Latin",
+-    u"Revival",
+-    u"Celtic",
+-    u"Bluegrass",
+-    u"Avantgarde",
+-    u"Gothic Rock",
+-    u"Progressive Rock",
+-    u"Psychadelic Rock",
+-    u"Symphonic Rock",
+-    u"Slow Rock",
+-    u"Big Band",
+-    u"Chorus",
+-    u"Easy Listening",
+-    u"Acoustic",
+-    u"Humour",
+-    u"Speech",
+-    u"Chanson",
+-    u"Opera",
+-    u"Chamber Music",
+-    u"Sonata",
+-    u"Symphony",
+-    u"Booty Bass",
+-    u"Primus",
+-    u"Porn Groove",
+-    u"Satire",
+-    u"Slow Jam",
+-    u"Club",
+-    u"Tango",
+-    u"Samba",
+-    u"Folklore",
+-    u"Ballad",
+-    u"Power Ballad",
+-    u"Rhythmic Soul",
+-    u"Freestyle",
+-    u"Duet",
+-    u"Punk Rock",
+-    u"Drum Solo",
+-    u"A Capella",
+-    u"Euro-House",
+-    u"Dance Hall",
+-    u"Goa",
+-    u"Drum & Bass",
+-    u"Club-House",
+-    u"Hardcore",
+-    u"Terror",
+-    u"Indie",
+-    u"BritPop",
+-    u"Negerpunk",
+-    u"Polsk Punk",
+-    u"Beat",
+-    u"Christian Gangsta Rap",
+-    u"Heavy Metal",
+-    u"Black Metal",
+-    u"Crossover",
+-    u"Contemporary Christian",
+-    u"Christian Rock",
+-    u"Merengue",
+-    u"Salsa",
+-    u"Thrash Metal",
+-    u"Anime",
+-    u"Jpop",
+-    u"Synthpop"
++    "Blues",
++    "Classic Rock",
++    "Country",
++    "Dance",
++    "Disco",
++    "Funk",
++    "Grunge",
++    "Hip-Hop",
++    "Jazz",
++    "Metal",
++    "New Age",
++    "Oldies",
++    "Other",
++    "Pop",
++    "R&B",
++    "Rap",
++    "Reggae",
++    "Rock",
++    "Techno",
++    "Industrial",
++    "Alternative",
++    "Ska",
++    "Death Metal",
++    "Pranks",
++    "Soundtrack",
++    "Euro-Techno",
++    "Ambient",
++    "Trip-Hop",
++    "Vocal",
++    "Jazz+Funk",
++    "Fusion",
++    "Trance",
++    "Classical",
++    "Instrumental",
++    "Acid",
++    "House",
++    "Game",
++    "Sound Clip",
++    "Gospel",
++    "Noise",
++    "Alt. Rock",
++    "Bass",
++    "Soul",
++    "Punk",
++    "Space",
++    "Meditative",
++    "Instrumental Pop",
++    "Instrumental Rock",
++    "Ethnic",
++    "Gothic",
++    "Darkwave",
++    "Techno-Industrial",
++    "Electronic",
++    "Pop-Folk",
++    "Eurodance",
++    "Dream",
++    "Southern Rock",
++    "Comedy",
++    "Cult",
++    "Gangsta",
++    "Top 40",
++    "Christian Rap",
++    "Pop/Funk",
++    "Jungle",
++    "Native American",
++    "Cabaret",
++    "New Wave",
++    "Psychadelic",
++    "Rave",
++    "Showtunes",
++    "Trailer",
++    "Lo-Fi",
++    "Tribal",
++    "Acid Punk",
++    "Acid Jazz",
++    "Polka",
++    "Retro",
++    "Musical",
++    "Rock & Roll",
++    "Hard Rock",
++    "Folk",
++    "Folk/Rock",
++    "National Folk",
++    "Swing",
++    "Fusion",
++    "Bebob",
++    "Latin",
++    "Revival",
++    "Celtic",
++    "Bluegrass",
++    "Avantgarde",
++    "Gothic Rock",
++    "Progressive Rock",
++    "Psychadelic Rock",
++    "Symphonic Rock",
++    "Slow Rock",
++    "Big Band",
++    "Chorus",
++    "Easy Listening",
++    "Acoustic",
++    "Humour",
++    "Speech",
++    "Chanson",
++    "Opera",
++    "Chamber Music",
++    "Sonata",
++    "Symphony",
++    "Booty Bass",
++    "Primus",
++    "Porn Groove",
++    "Satire",
++    "Slow Jam",
++    "Club",
++    "Tango",
++    "Samba",
++    "Folklore",
++    "Ballad",
++    "Power Ballad",
++    "Rhythmic Soul",
++    "Freestyle",
++    "Duet",
++    "Punk Rock",
++    "Drum Solo",
++    "A Capella",
++    "Euro-House",
++    "Dance Hall",
++    "Goa",
++    "Drum & Bass",
++    "Club-House",
++    "Hardcore",
++    "Terror",
++    "Indie",
++    "BritPop",
++    "Negerpunk",
++    "Polsk Punk",
++    "Beat",
++    "Christian Gangsta Rap",
++    "Heavy Metal",
++    "Black Metal",
++    "Crossover",
++    "Contemporary Christian",
++    "Christian Rock",
++    "Merengue",
++    "Salsa",
++    "Thrash Metal",
++    "Anime",
++    "Jpop",
++    "Synthpop"
+     ]
+ """The ID3v1 genre list."""
+--- pytivo/mutagen/_util.py	(original)
++++ pytivo/mutagen/_util.py	(refactored)
+@@ -32,7 +32,7 @@
+     """
+ 
+     def __iter__(self):
+-        return iter(self.keys())
++        return iter(list(self.keys()))
+ 
+     def has_key(self, key):
+         try: self[key]
+@@ -40,18 +40,18 @@
+         else: return True
+     __contains__ = has_key
+ 
+-    iterkeys = lambda self: iter(self.keys())
++    iterkeys = lambda self: iter(list(self.keys()))
+ 
+     def values(self):
+-        return map(self.__getitem__, self.keys())
+-    itervalues = lambda self: iter(self.values())
++        return list(map(self.__getitem__, list(self.keys())))
++    itervalues = lambda self: iter(list(self.values()))
+ 
+     def items(self):
+-        return zip(self.keys(), self.values())
+-    iteritems = lambda s: iter(s.items())
++        return list(zip(list(self.keys()), list(self.values())))
++    iteritems = lambda s: iter(list(s.items()))
+ 
+     def clear(self):
+-        map(self.__delitem__, self.keys())
++        list(map(self.__delitem__, list(self.keys())))
+ 
+     def pop(self, key, *args):
+         if len(args) > 1:
+@@ -65,7 +65,7 @@
+ 
+     def popitem(self):
+         try:
+-            key = self.keys()[0]
++            key = list(self.keys())[0]
+             return key, self.pop(key)
+         except IndexError: raise KeyError("dictionary is empty")
+ 
+@@ -74,7 +74,7 @@
+             self.update(kwargs)
+             other = {}
+ 
+-        try: map(self.__setitem__, other.keys(), other.values())
++        try: list(map(self.__setitem__, list(other.keys()), list(other.values())))
+         except AttributeError:
+             for key, value in other:
+                 self[key] = value
+@@ -90,16 +90,16 @@
+         except KeyError: return default
+ 
+     def __repr__(self):
+-        return repr(dict(self.items()))
++        return repr(dict(list(self.items())))
+ 
+     def __cmp__(self, other):
+         if other is None: return 1
+-        else: return cmp(dict(self.items()), other)
++        else: return cmp(dict(list(self.items())), other)
+ 
+     __hash__ = object.__hash__
+ 
+     def __len__(self):
+-        return len(self.keys())
++        return len(list(self.keys()))
+ 
+ class DictProxy(DictMixin):
+     def __init__(self, *args, **kwargs):
+@@ -116,7 +116,7 @@
+         del(self.__dict[key])
+ 
+     def keys(self):
+-        return self.__dict.keys()
++        return list(self.__dict.keys())
+ 
+ class cdata(object):
+     """C character buffer to Python numeric type conversions."""
+@@ -308,7 +308,7 @@
+     """Convert a basestring to a valid UTF-8 str."""
+     if isinstance(data, str):
+         return data.decode("utf-8", "replace").encode("utf-8")
+-    elif isinstance(data, unicode):
++    elif isinstance(data, str):
+         return data.encode("utf-8")
+     else: raise TypeError("only unicode/str types can be converted to UTF-8")
+ 
+@@ -316,7 +316,7 @@
+     try:
+         return d[key]
+     except KeyError:
+-        for pattern, value in d.iteritems():
++        for pattern, value in d.items():
+             if fnmatchcase(key, pattern):
+                 return value
+     return default
+--- pytivo/mutagen/_vorbis.py	(original)
++++ pytivo/mutagen/_vorbis.py	(refactored)
+@@ -16,7 +16,7 @@
+ 
+ import sys
+ 
+-from cStringIO import StringIO
++from io import StringIO
+ 
+ import mutagen
+ from mutagen._util import DictMixin, cdata
+@@ -54,7 +54,7 @@
+     vendor -- the stream 'vendor' (i.e. writer); default 'Mutagen'
+     """
+ 
+-    vendor = u"Mutagen " + mutagen.version_string
++    vendor = "Mutagen " + mutagen.version_string
+ 
+     def __init__(self, data=None, *args, **kwargs):
+         # Collect the args to pass to load, this lets child classes
+@@ -90,16 +90,16 @@
+                 except (OverflowError, MemoryError):
+                     raise error("cannot read %d bytes, too large" % length)
+                 try: tag, value = string.split('=', 1)
+-                except ValueError, err:
++                except ValueError as err:
+                     if errors == "ignore":
+                         continue
+                     elif errors == "replace":
+-                        tag, value = u"unknown%d" % i, string
++                        tag, value = "unknown%d" % i, string
+                     else:
+-                        raise VorbisEncodingError, str(err), sys.exc_info()[2]
++                        raise VorbisEncodingError(str(err)).with_traceback(sys.exc_info()[2])
+                 try: tag = tag.encode('ascii', errors)
+                 except UnicodeEncodeError:
+-                    raise VorbisEncodingError, "invalid tag name %r" % tag
++                    raise VorbisEncodingError("invalid tag name %r" % tag)
+                 else:
+                     if is_valid_key(tag): self.append((tag, value))
+             if framing and not ord(fileobj.read(1)) & 0x01:
+@@ -115,7 +115,7 @@
+         any invalid keys or values are found, a ValueError is raised.
+         """
+ 
+-        if not isinstance(self.vendor, unicode):
++        if not isinstance(self.vendor, str):
+             try: self.vendor.decode('utf-8')
+             except UnicodeDecodeError: raise ValueError
+ 
+@@ -123,7 +123,7 @@
+             try:
+                 if not is_valid_key(key): raise ValueError
+             except: raise ValueError("%r is not a valid key" % key)
+-            if not isinstance(value, unicode):
++            if not isinstance(value, str):
+                 try: value.encode("utf-8")
+                 except: raise ValueError("%r is not a valid value" % value)
+         else: return True
+@@ -181,15 +181,15 @@
+         """
+         key = key.lower().encode('ascii')
+         values = [value for (k, value) in self if k.lower() == key]
+-        if not values: raise KeyError, key
++        if not values: raise KeyError(key)
+         else: return values
+ 
+     def __delitem__(self, key):
+         """Delete all values associated with the key."""
+         key = key.lower().encode('ascii')
+-        to_delete = filter(lambda x: x[0].lower() == key, self)
+-        if not to_delete:raise KeyError, key
+-        else: map(self.remove, to_delete)
++        to_delete = [x for x in self if x[0].lower() == key]
++        if not to_delete:raise KeyError(key)
++        else: list(map(self.remove, to_delete))
+ 
+     def __contains__(self, key):
+         """Return true if the key has any values."""
+@@ -220,4 +220,4 @@
+ 
+     def as_dict(self):
+         """Return a copy of the comment data in a real dict."""
+-        return dict([(key, self[key]) for key in self.keys()])
++        return dict([(key, self[key]) for key in list(self.keys())])
+--- pytivo/mutagen/apev2.py	(original)
++++ pytivo/mutagen/apev2.py	(refactored)
+@@ -33,7 +33,7 @@
+ __all__ = ["APEv2", "APEv2File", "Open", "delete"]
+ 
+ import struct
+-from cStringIO import StringIO
++from io import StringIO
+ 
+ def is_valid_apev2_key(key):
+     return (2 <= len(key) <= 255 and min(key) >= ' ' and max(key) <= '~' and
+@@ -44,11 +44,11 @@
+ #  1: Item contains binary information
+ #  2: Item is a locator of external stored information [e.g. URL]
+ #  3: reserved"
+-TEXT, BINARY, EXTERNAL = range(3)
+-
+-HAS_HEADER = 1L << 31
+-HAS_NO_FOOTER = 1L << 30
+-IS_HEADER  = 1L << 29
++TEXT, BINARY, EXTERNAL = list(range(3))
++
++HAS_HEADER = 1 << 31
++HAS_NO_FOOTER = 1 << 30
++IS_HEADER  = 1 << 29
+ 
+ class error(IOError): pass
+ class APENoHeaderError(error, ValueError): pass
+@@ -199,7 +199,7 @@
+ 
+     def pprint(self):
+         """Return tag key=value pairs in a human-readable format."""
+-        items = self.items()
++        items = list(self.items())
+         items.sort()
+         return "\n".join(["%s=%s" % (k, v.pprint()) for k, v in items])
+ 
+@@ -271,7 +271,7 @@
+ 
+         if not isinstance(value, _APEValue):
+             # let's guess at the content if we're not already a value...
+-            if isinstance(value, unicode):
++            if isinstance(value, str):
+                 # unicode? we've got to be text.
+                 value = APEValue(utf8(value), TEXT)
+             elif isinstance(value, list):
+@@ -289,7 +289,7 @@
+         self.__dict[key.lower()] = value
+ 
+     def keys(self):
+-        return [self.__casemap.get(key, key) for key in self.__dict.keys()]
++        return [self.__casemap.get(key, key) for key in list(self.__dict.keys())]
+ 
+     def save(self, filename=None):
+         """Save changes to a file.
+@@ -318,7 +318,7 @@
+         # "APE tags items should be sorted ascending by size... This is
+         # not a MUST, but STRONGLY recommended. Actually the items should
+         # be sorted by importance/byte, but this is not feasible."
+-        tags = [v._internal(k) for k, v in self.items()]
++        tags = [v._internal(k) for k, v in list(self.items())]
+         tags.sort(lambda a, b: cmp(len(a), len(b)))
+         num_tags = len(tags)
+         tags = "".join(tags)
+@@ -401,20 +401,20 @@
+     strings (with a null seperating the values), or arrays of strings."""
+ 
+     def __unicode__(self):
+-        return unicode(str(self), "utf-8")
++        return str(str(self), "utf-8")
+ 
+     def __iter__(self):
+         """Iterate over the strings of the value (not the characters)"""
+-        return iter(unicode(self).split("\0"))
++        return iter(str(self).split("\0"))
+ 
+     def __getitem__(self, index):
+-        return unicode(self).split("\0")[index]
++        return str(self).split("\0")[index]
+ 
+     def __len__(self):
+         return self.value.count("\0") + 1
+ 
+     def __cmp__(self, other):
+-        return cmp(unicode(self), other)
++        return cmp(str(self), other)
+ 
+     __hash__ = _APEValue.__hash__
+ 
+@@ -436,7 +436,7 @@
+ 
+     External values are usually URI or IRI strings.
+     """
+-    def pprint(self): return "[External] %s" % unicode(self)
++    def pprint(self): return "[External] %s" % str(self)
+ 
+ class APEv2File(FileType):
+     class _Info(object):
+--- pytivo/mutagen/asf.py	(original)
++++ pytivo/mutagen/asf.py	(refactored)
+@@ -49,14 +49,14 @@
+ 
+         """
+         values = [value for (k, value) in self if k == key]
+-        if not values: raise KeyError, key
++        if not values: raise KeyError(key)
+         else: return values
+ 
+     def __delitem__(self, key):
+         """Delete all values associated with the key."""
+-        to_delete = filter(lambda x: x[0] == key, self)
+-        if not to_delete: raise KeyError, key
+-        else: map(self.remove, to_delete)
++        to_delete = [x for x in self if x[0] == key]
++        if not to_delete: raise KeyError(key)
++        else: list(map(self.remove, to_delete))
+ 
+     def __contains__(self, key):
+         """Return true if the key has any values."""
+@@ -78,15 +78,15 @@
+         except KeyError: pass
+         for value in values:
+             if key in _standard_attribute_names:
+-                value = unicode(value)
++                value = str(value)
+             elif not isinstance(value, ASFBaseAttribute):
+-                if isinstance(value, basestring):
++                if isinstance(value, str):
+                     value = ASFUnicodeAttribute(value)
+                 elif isinstance(value, bool):
+                     value = ASFBoolAttribute(value)
+                 elif isinstance(value, int):
+                     value = ASFDWordAttribute(value)
+-                elif isinstance(value, long):
++                elif isinstance(value, int):
+                     value = ASFQWordAttribute(value)
+             self.append((key, value))
+ 
+@@ -168,7 +168,7 @@
+         return self.value
+ 
+     def __cmp__(self, other):
+-        return cmp(unicode(self), other)
++        return cmp(str(self), other)
+ 
+     __hash__ = ASFBaseAttribute.__hash__
+ 
+@@ -332,7 +332,7 @@
+ GUID = ASFGUIDAttribute.TYPE
+ 
+ def ASFValue(value, kind, **kwargs):
+-    for t, c in _attribute_types.items():
++    for t, c in list(_attribute_types.items()):
+         if kind == t:
+             return c(value=value, **kwargs)
+     raise ValueError("Unknown value type")
+@@ -400,12 +400,12 @@
+                 texts.append(None)
+             pos = end
+         title, author, copyright, desc, rating = texts
+-        for key, value in dict(
++        for key, value in list(dict(
+             Title=title,
+             Author=author,
+             Copyright=copyright,
+             Description=desc,
+-            Rating=rating).items():
++            Rating=rating).items()):
+             if value is not None:
+                 asf.tags[key] = value
+ 
+@@ -416,8 +416,8 @@
+                 return value[0].encode("utf-16-le") + "\x00\x00"
+             else:
+                 return ""
+-        texts = map(render_text, _standard_attribute_names)
+-        data = struct.pack("<HHHHH", *map(len, texts)) + "".join(texts)
++        texts = list(map(render_text, _standard_attribute_names))
++        data = struct.pack("<HHHHH", *list(map(len, texts))) + "".join(texts)
+         return self.GUID + struct.pack("<Q", 24 + len(data)) + data
+ 
+ 
+@@ -443,7 +443,7 @@
+             asf.tags.append((name, attr))
+ 
+     def render(self, asf):
+-        attrs = asf.to_extended_content_description.items()
++        attrs = list(asf.to_extended_content_description.items())
+         data = "".join([attr.render(name) for (name, attr) in attrs])
+         data = struct.pack("<QH", 26 + len(data), len(attrs)) + data
+         return self.GUID + data
+@@ -523,7 +523,7 @@
+             asf.tags.append((name, attr))
+ 
+     def render(self, asf):
+-        attrs = asf.to_metadata.items()
++        attrs = list(asf.to_metadata.items())
+         data = "".join([attr.render_m(name) for (name, attr) in attrs])
+         return (self.GUID + struct.pack("<QH", 26 + len(data), len(attrs)) +
+                 data)
+@@ -654,7 +654,7 @@
+     def __read_file(self, fileobj):
+         header = fileobj.read(30)
+         if len(header) != 30 or header[:16] != HeaderObject.GUID:
+-            raise ASFHeaderError, "Not an ASF file."
++            raise ASFHeaderError("Not an ASF file.")
+ 
+         self.extended_content_description_obj = None
+         self.content_description_obj = None
+--- pytivo/mutagen/easyid3.py	(original)
++++ pytivo/mutagen/easyid3.py	(refactored)
+@@ -146,7 +146,7 @@
+                 enc = 0
+                 # Store 8859-1 if we can, per MusicBrainz spec.
+                 for v in value:
+-                    if max(v) > u'\x7f':
++                    if max(v) > '\x7f':
+                         enc = 3
+                 id3.add(mutagen.id3.TXXX(encoding=enc, text=value, desc=desc))
+             else:
+@@ -182,7 +182,7 @@
+ 
+     def __setitem__(self, key, value):
+         key = key.lower()
+-        if isinstance(value, basestring):
++        if isinstance(value, str):
+             value = [value]
+         func = dict_match(self.Set, key, self.SetFallback)
+         if func is not None:
+@@ -200,7 +200,7 @@
+ 
+     def keys(self):
+         keys = []
+-        for key in self.Get.keys():
++        for key in list(self.Get.keys()):
+             if key in self.List:
+                 keys.extend(self.List[key](self.__id3, key))
+             elif key in self:
+@@ -332,7 +332,7 @@
+     except KeyError:
+         raise EasyID3KeyError(key)
+     else:
+-        return [u"%+f dB" % frame.gain]
++        return ["%+f dB" % frame.gain]
+ 
+ def gain_set(id3, key, value):
+     if len(value) != 1:
+@@ -362,7 +362,7 @@
+     except KeyError:
+         raise EasyID3KeyError(key)
+     else:
+-        return [u"%f" % frame.peak]
++        return ["%f" % frame.peak]
+ 
+ def peak_set(id3, key, value):
+     if len(value) != 1:
+@@ -423,7 +423,7 @@
+     "TSOT": "titlesort",
+     "TSRC": "isrc",
+     "TSST": "discsubtitle",
+-    }.iteritems():
++    }.items():
+     EasyID3.RegisterTextKey(key, frameid)
+ 
+ EasyID3.RegisterKey("genre", genre_get, genre_set, genre_delete)
+@@ -444,20 +444,20 @@
+ # http://bugs.musicbrainz.org/ticket/1383
+ # http://musicbrainz.org/doc/MusicBrainzTag
+ for desc, key in {
+-    u"MusicBrainz Artist Id": "musicbrainz_artistid",
+-    u"MusicBrainz Album Id": "musicbrainz_albumid",
+-    u"MusicBrainz Album Artist Id": "musicbrainz_albumartistid",
+-    u"MusicBrainz TRM Id": "musicbrainz_trmid",
+-    u"MusicIP PUID": "musicip_puid",
+-    u"MusicMagic Fingerprint": "musicip_fingerprint",
+-    u"MusicBrainz Album Status": "musicbrainz_albumstatus",
+-    u"MusicBrainz Album Type": "musicbrainz_albumtype",
+-    u"MusicBrainz Album Release Country": "releasecountry",
+-    u"MusicBrainz Disc Id": "musicbrainz_discid",
+-    u"ASIN": "asin",
+-    u"ALBUMARTISTSORT": "albumartistsort",
+-    u"BARCODE": "barcode",
+-    }.iteritems():
++    "MusicBrainz Artist Id": "musicbrainz_artistid",
++    "MusicBrainz Album Id": "musicbrainz_albumid",
++    "MusicBrainz Album Artist Id": "musicbrainz_albumartistid",
++    "MusicBrainz TRM Id": "musicbrainz_trmid",
++    "MusicIP PUID": "musicip_puid",
++    "MusicMagic Fingerprint": "musicip_fingerprint",
++    "MusicBrainz Album Status": "musicbrainz_albumstatus",
++    "MusicBrainz Album Type": "musicbrainz_albumtype",
++    "MusicBrainz Album Release Country": "releasecountry",
++    "MusicBrainz Disc Id": "musicbrainz_discid",
++    "ASIN": "asin",
++    "ALBUMARTISTSORT": "albumartistsort",
++    "BARCODE": "barcode",
++    }.items():
+     EasyID3.RegisterTXXXKey(key, desc)
+ 
+ class EasyID3FileType(ID3FileType):
+--- pytivo/mutagen/easymp4.py	(original)
++++ pytivo/mutagen/easymp4.py	(refactored)
+@@ -86,11 +86,11 @@
+         """
+ 
+         def getter(tags, key):
+-            return map(unicode, tags[atomid])
++            return list(map(str, tags[atomid]))
+ 
+         def setter(tags, key, value):
+             clamp = lambda x: int(min(max(min_value, x), max_value))
+-            tags[atomid] = map(clamp, map(int, value))
++            tags[atomid] = list(map(clamp, list(map(int, value))))
+ 
+         def deleter(tags, key):
+             del(tags[atomid])
+@@ -103,9 +103,9 @@
+             ret = []
+             for (track, total) in tags[atomid]:
+                 if total:
+-                    ret.append(u"%d/%d" % (track, total))
++                    ret.append("%d/%d" % (track, total))
+                 else:
+-                    ret.append(unicode(track))
++                    ret.append(str(track))
+             return ret
+ 
+         def setter(tags, key, value):
+@@ -143,7 +143,7 @@
+             return [s.decode("utf-8", "replace") for s in tags[atomid]]
+ 
+         def setter(tags, key, value):
+-            tags[atomid] = map(utf8, value)
++            tags[atomid] = list(map(utf8, value))
+ 
+         def deleter(tags, key):
+             del(tags[atomid])
+@@ -161,7 +161,7 @@
+ 
+     def __setitem__(self, key, value):
+         key = key.lower()
+-        if isinstance(value, basestring):
++        if isinstance(value, str):
+             value = [value]
+         func = dict_match(self.Set, key)
+         if func is not None:
+@@ -179,7 +179,7 @@
+ 
+     def keys(self):
+         keys = []
+-        for key in self.Get.keys():
++        for key in list(self.Get.keys()):
+             if key in self.List:
+                 keys.extend(self.List[key](self.__mp4, key))
+             elif key in self:
+@@ -195,7 +195,7 @@
+                 strings.append("%s=%s" % (key, value))
+         return "\n".join(strings)
+ 
+-for atomid, key in {
++for atomid, key in list({
+     '\xa9nam': 'title',
+     '\xa9alb': 'album',
+     '\xa9ART': 'artist',
+@@ -211,10 +211,10 @@
+     'soar': 'artistsort',
+     'sonm': 'titlesort',
+     'soco': 'composersort',
+-    }.items():
++    }.items()):
+     EasyMP4Tags.RegisterTextKey(key, atomid)
+ 
+-for name, key in {
++for name, key in list({
+     'MusicBrainz Artist Id': 'musicbrainz_artistid',
+     'MusicBrainz Track Id': 'musicbrainz_trackid',
+     'MusicBrainz Album Id': 'musicbrainz_albumid',
+@@ -223,18 +223,18 @@
+     'MusicBrainz Album Status': 'musicbrainz_albumstatus',
+     'MusicBrainz Album Type': 'musicbrainz_albumtype',
+     'MusicBrainz Release Country': 'releasecountry',
+-    }.items():
++    }.items()):
+     EasyMP4Tags.RegisterFreeformKey(key, name)
+ 
+-for name, key in {
++for name, key in list({
+     "tmpo": "bpm",
+-    }.items():
++    }.items()):
+     EasyMP4Tags.RegisterIntKey(key, name)
+ 
+-for name, key in {
++for name, key in list({
+     "trkn": "tracknumber",
+     "disk": "discnumber",
+-    }.items():
++    }.items()):
+     EasyMP4Tags.RegisterIntPairKey(key, name)
+ 
+ class EasyMP4(MP4):
+--- pytivo/mutagen/flac.py	(original)
++++ pytivo/mutagen/flac.py	(refactored)
+@@ -22,8 +22,8 @@
+ __all__ = ["FLAC", "Open", "delete"]
+ 
+ import struct
+-from cStringIO import StringIO
+-from _vorbis import VCommentDict
++from io import StringIO
++from ._vorbis import VCommentDict
+ from mutagen import FileType
+ from mutagen._util import insert_bytes
+ from mutagen.id3 import BitPaddedInt
+@@ -38,7 +38,7 @@
+ def to_int_be(string):
+     """Convert an arbitrarily-long string to a long using big-endian
+     byte order."""
+-    return reduce(lambda a, b: (a << 8) + ord(b), string, 0L)
++    return reduce(lambda a, b: (a << 8) + ord(b), string, 0)
+ 
+ class MetadataBlock(object):
+     """A generic block of FLAC metadata.
+@@ -82,8 +82,8 @@
+ 
+         The overall size of the rendered blocks does not change, so
+         this adds several bytes of padding for each merged block."""
+-        paddings = filter(lambda x: isinstance(x, Padding), blocks)
+-        map(blocks.remove, paddings)
++        paddings = [x for x in blocks if isinstance(x, Padding)]
++        list(map(blocks.remove, paddings))
+         padding = Padding()
+         # total padding size is the sum of padding sizes plus 4 bytes
+         # per removed header.
+@@ -141,7 +141,7 @@
+         bps_tail = bps_total >> 36
+         bps_head = (sample_channels_bps & 1) << 4
+         self.bits_per_sample = int(bps_head + bps_tail + 1)
+-        self.total_samples = bps_total & 0xFFFFFFFFFL
++        self.total_samples = bps_total & 0xFFFFFFFFF
+         self.length = self.total_samples / float(self.sample_rate)
+ 
+         self.md5_signature = to_int_be(data.read(16))
+@@ -165,12 +165,12 @@
+         byte += (self.total_samples >> 32) & 0xF
+         f.write(chr(byte))
+         # last 32 of sample count
+-        f.write(struct.pack(">I", self.total_samples & 0xFFFFFFFFL))
++        f.write(struct.pack(">I", self.total_samples & 0xFFFFFFFF))
+         # MD5 signature
+         sig = self.md5_signature
+         f.write(struct.pack(
+-            ">4I", (sig >> 96) & 0xFFFFFFFFL, (sig >> 64) & 0xFFFFFFFFL,
+-            (sig >> 32) & 0xFFFFFFFFL, sig & 0xFFFFFFFFL))
++            ">4I", (sig >> 96) & 0xFFFFFFFF, (sig >> 64) & 0xFFFFFFFF,
++            (sig >> 32) & 0xFFFFFFFF, sig & 0xFFFFFFFF))
+         return f.getvalue()
+ 
+     def pprint(self):
+@@ -432,8 +432,8 @@
+ 
+     def __init__(self, data=None):
+         self.type = 0
+-        self.mime = u''
+-        self.desc = u''
++        self.mime = ''
++        self.desc = ''
+         self.width = 0
+         self.height = 0
+         self.depth = 0
+@@ -623,11 +623,10 @@
+ 
+     def clear_pictures(self):
+         """Delete all pictures from the file."""
+-        self.metadata_blocks = filter(lambda b: b.code != Picture.code,
+-                                      self.metadata_blocks)
++        self.metadata_blocks = [b for b in self.metadata_blocks if b.code != Picture.code]
+ 
+     def __get_pictures(self):
+-        return filter(lambda b: b.code == Picture.code, self.metadata_blocks)
++        return [b for b in self.metadata_blocks if b.code == Picture.code]
+     pictures = property(__get_pictures, doc="List of embedded pictures")
+ 
+     def save(self, filename=None, deleteid3=False):
+--- pytivo/mutagen/id3.py	(original)
++++ pytivo/mutagen/id3.py	(refactored)
+@@ -81,7 +81,7 @@
+                 raise ValueError('Requested bytes (%s) less than zero' % size)
+             if size > self.__filesize:
+                 raise EOFError('Requested %#x of %#x (%s)' % 
+-                        (long(size), long(self.__filesize), self.filename))
++                        (int(size), int(self.__filesize), self.filename))
+         except AttributeError: pass
+         data = self.__fileobj.read(size)
+         if len(data) != size: raise EOFError
+@@ -117,18 +117,18 @@
+                 self.size = 0
+                 raise ID3NoHeaderError("%s: too small (%d bytes)" %(
+                     filename, self.__filesize))
+-            except (ID3NoHeaderError, ID3UnsupportedVersionError), err:
++            except (ID3NoHeaderError, ID3UnsupportedVersionError) as err:
+                 self.size = 0
+                 import sys
+                 stack = sys.exc_info()[2]
+                 try: self.__fileobj.seek(-128, 2)
+-                except EnvironmentError: raise err, None, stack
++                except EnvironmentError: raise err.with_traceback(stack)
+                 else:
+                     frames = ParseID3v1(self.__fileobj.read(128))
+                     if frames is not None:
+                         self.version = (1, 1)
+-                        map(self.add, frames.values())
+-                    else: raise err, None, stack
++                        list(map(self.add, list(frames.values())))
++                    else: raise err.with_traceback(stack)
+             else:
+                 frames = self.__known_frames
+                 if frames is None:
+@@ -161,14 +161,14 @@
+         if key in self: return [self[key]]
+         else:
+             key = key + ":"
+-            return [v for s,v in self.items() if s.startswith(key)]
++            return [v for s,v in list(self.items()) if s.startswith(key)]
+ 
+     def delall(self, key):
+         """Delete all tags of a given kind; see getall."""
+         if key in self: del(self[key])
+         else:
+             key = key + ":"
+-            for k in filter(lambda s: s.startswith(key), self.keys()):
++            for k in [s for s in list(self.keys()) if s.startswith(key)]:
+                 del(self[k])
+ 
+     def setall(self, key, values):
+@@ -186,7 +186,7 @@
+         However, ID3 frames can have multiple keys:
+             POPM=user@example.org=3 128/255
+         """
+-        frames = list(map(Frame.pprint, self.values()))
++        frames = list(map(Frame.pprint, list(self.values())))
+         frames.sort()
+         return "\n".join(frames)
+ 
+@@ -360,9 +360,9 @@
+ 
+         # Sort frames by 'importance'
+         order = ["TIT2", "TPE1", "TRCK", "TALB", "TPOS", "TDRC", "TCON"]
+-        order = dict(zip(order, range(len(order))))
++        order = dict(list(zip(order, list(range(len(order))))))
+         last = len(order)
+-        frames = self.items()
++        frames = list(self.items())
+         frames.sort(lambda a, b: cmp(order.get(a[0][:4], last),
+                                      order.get(b[0][:4], last)))
+ 
+@@ -372,7 +372,7 @@
+         if not framedata:
+             try:
+                 self.delete(filename)
+-            except EnvironmentError, err:
++            except EnvironmentError as err:
+                 from errno import ENOENT
+                 if err.errno != ENOENT: raise
+             return
+@@ -382,7 +382,7 @@
+ 
+         if filename is None: filename = self.filename
+         try: f = open(filename, 'rb+')
+-        except IOError, err:
++        except IOError as err:
+             from errno import ENOENT
+             if err.errno != ENOENT: raise
+             f = open(filename, 'ab') # create, then reopen
+@@ -410,7 +410,7 @@
+ 
+             try:
+                 f.seek(-128, 2)
+-            except IOError, err:
++            except IOError as err:
+                 # If the file is too small, that's OK - it just means
+                 # we're certain it doesn't have a v1 tag.
+                 from errno import EINVAL
+@@ -570,7 +570,7 @@
+     def __new__(cls, value, bits=7, bigendian=True):
+         "Strips 8-bits bits out of every byte"
+         mask = (1<<(bits))-1
+-        if isinstance(value, (int, long)):
++        if isinstance(value, int):
+             bytes = []
+             while value:
+                 bytes.append(value & ((1<<bits)-1))
+@@ -579,10 +579,10 @@
+             bytes = [ord(byte) & mask for byte in value]
+             if bigendian: bytes.reverse()
+         numeric_value = 0
+-        for shift, byte in zip(range(0, len(bytes)*bits, bits), bytes):
++        for shift, byte in zip(list(range(0, len(bytes)*bits, bits)), bytes):
+             numeric_value += byte << shift
+-        if isinstance(numeric_value, long):
+-            self = long.__new__(BitPaddedLong, numeric_value)
++        if isinstance(numeric_value, int):
++            self = int.__new__(BitPaddedLong, numeric_value)
+         else:
+             self = int.__new__(BitPaddedInt, numeric_value)
+         self.bits = bits
+@@ -601,7 +601,7 @@
+         # PCNT and POPM use growing integers of at least 4 bytes as counters.
+         if width == -1: width = max(4, len(bytes))
+         if len(bytes) > width:
+-            raise ValueError, 'Value too wide (%d bytes)' % len(bytes)
++            raise ValueError('Value too wide (%d bytes)' % len(bytes))
+         else: bytes.extend([0] * (width-len(bytes)))
+         if bigendian: bytes.reverse()
+         return ''.join(map(chr, bytes))
+@@ -684,7 +684,7 @@
+     def validate(self, frame, value):
+         if 0 <= value <= 3: return value
+         if value is None: return None
+-        raise ValueError, 'Invalid Encoding: %r' % value
++        raise ValueError('Invalid Encoding: %r' % value)
+ 
+ class StringSpec(Spec):
+     def __init__(self, name, length):
+@@ -696,8 +696,8 @@
+         else: return (str(value) + '\x00' * s.len)[:s.len]
+     def validate(s, frame, value):
+         if value is None: return None
+-        if isinstance(value, basestring) and len(value) == s.len: return value
+-        raise ValueError, 'Invalid StringSpec[%d] data: %r' % (s.len, value)
++        if isinstance(value, str) and len(value) == s.len: return value
++        raise ValueError('Invalid StringSpec[%d] data: %r' % (s.len, value))
+ 
+ class BinaryDataSpec(Spec):
+     def read(self, frame, data): return data, ''
+@@ -726,14 +726,14 @@
+                     data, ret = data[0:offset], data[offset+2:]; break
+             except ValueError: pass
+ 
+-        if len(data) < len(term): return u'', ret
++        if len(data) < len(term): return '', ret
+         return data.decode(enc), ret
+ 
+     def write(self, frame, value):
+         enc, term = self._encodings[frame.encoding]
+         return value.encode(enc) + term
+ 
+-    def validate(self, frame, value): return unicode(value)
++    def validate(self, frame, value): return str(value)
+ 
+ class MultiSpec(Spec):
+     def __init__(self, name, *specs, **kw):
+@@ -765,7 +765,7 @@
+ 
+     def validate(self, frame, value):
+         if value is None: return []
+-        if self.sep and isinstance(value, basestring):
++        if self.sep and isinstance(value, str):
+             value = value.split(self.sep)
+         if isinstance(value, list):
+             if len(self.specs) == 1:
+@@ -774,7 +774,7 @@
+                 return [ 
+                     [s.validate(frame, v) for (v,s) in zip(val, self.specs)]
+                     for val in value ]
+-        raise ValueError, 'Invalid MultiSpec data: %r' % value
++        raise ValueError('Invalid MultiSpec data: %r' % value)
+ 
+ class EncodedNumericTextSpec(EncodedTextSpec): pass
+ class EncodedNumericPartTextSpec(EncodedTextSpec): pass
+@@ -788,7 +788,7 @@
+     def write(self, data, value):
+         return value.encode('latin1') + '\x00'
+ 
+-    def validate(self, frame, value): return unicode(value)
++    def validate(self, frame, value): return str(value)
+ 
+ class ID3TimeStamp(object):
+     """A time stamp in ID3v2 format.
+@@ -812,9 +812,9 @@
+         parts = [self.year, self.month, self.day,
+                 self.hour, self.minute, self.second]
+         pieces = []
+-        for i, part in enumerate(iter(iter(parts).next, None)):
++        for i, part in enumerate(iter(iter(parts).__next__, None)):
+             pieces.append(self.__formats[i]%part + self.__seps[i])
+-        return u''.join(pieces)[:-1]
++        return ''.join(pieces)[:-1]
+ 
+     def set_text(self, text, splitre=re.compile('[-T:/.]|\s+')):
+         year, month, day, hour, minute, second = \
+@@ -843,11 +843,11 @@
+ 
+     def validate(self, frame, value):
+         try: return ID3TimeStamp(value)
+-        except TypeError: raise ValueError, "Invalid ID3TimeStamp: %r" % value
++        except TypeError: raise ValueError("Invalid ID3TimeStamp: %r" % value)
+ 
+ class ChannelSpec(ByteSpec):
+     (OTHER, MASTER, FRONTRIGHT, FRONTLEFT, BACKRIGHT, BACKLEFT, FRONTCENTRE,
+-     BACKCENTRE, SUBWOOFER) = range(9)
++     BACKCENTRE, SUBWOOFER) = list(range(9))
+ 
+ class VolumeAdjustmentSpec(Spec):
+     def read(self, frame, data):
+@@ -931,7 +931,7 @@
+             freq /= 2.0
+             adj /= 512.0
+             adjustments[freq] = adj
+-        adjustments = adjustments.items()
++        adjustments = list(adjustments.items())
+         adjustments.sort()
+         return adjustments, data
+ 
+@@ -1064,21 +1064,21 @@
+                 data = data[4:]
+             if tflags & Frame.FLAG24_UNSYNCH or id3.f_unsynch:
+                 try: data = unsynch.decode(data)
+-                except ValueError, err:
++                except ValueError as err:
+                     if id3.PEDANTIC:
+-                        raise ID3BadUnsynchData, '%s: %r' % (err, data)
++                        raise ID3BadUnsynchData('%s: %r' % (err, data))
+             if tflags & Frame.FLAG24_ENCRYPT:
+                 raise ID3EncryptionUnsupportedError
+             if tflags & Frame.FLAG24_COMPRESS:
+                 try: data = data.decode('zlib')
+-                except zlibError, err:
++                except zlibError as err:
+                     # the initial mutagen that went out with QL 0.12 did not
+                     # write the 4 bytes of uncompressed size. Compensate.
+                     data = datalen_bytes + data
+                     try: data = data.decode('zlib')
+-                    except zlibError, err:
++                    except zlibError as err:
+                         if id3.PEDANTIC:
+-                            raise ID3BadCompressedData, '%s: %r' % (err, data)
++                            raise ID3BadCompressedData('%s: %r' % (err, data))
+ 
+         elif (2,3,0) <= id3.version:
+             if tflags & Frame.FLAG23_COMPRESS:
+@@ -1088,9 +1088,9 @@
+                 raise ID3EncryptionUnsupportedError
+             if tflags & Frame.FLAG23_COMPRESS:
+                 try: data = data.decode('zlib')
+-                except zlibError, err:
++                except zlibError as err:
+                     if id3.PEDANTIC:
+-                        raise ID3BadCompressedData, '%s: %r' % (err, data)
++                        raise ID3BadCompressedData('%s: %r' % (err, data))
+ 
+         frame = cls()
+         frame._rawdata = data
+@@ -1169,12 +1169,12 @@
+     """
+ 
+     _framespec = [ EncodingSpec('encoding'),
+-        MultiSpec('text', EncodedTextSpec('text'), sep=u'\u0000') ]
++        MultiSpec('text', EncodedTextSpec('text'), sep='\u0000') ]
+     def __str__(self): return self.__unicode__().encode('utf-8')
+-    def __unicode__(self): return u'\u0000'.join(self.text)
++    def __unicode__(self): return '\u0000'.join(self.text)
+     def __eq__(self, other):
+         if isinstance(other, str): return str(self) == other
+-        elif isinstance(other, unicode): return unicode(self) == other
++        elif isinstance(other, str): return str(self) == other
+         return self.text == other
+     __hash__ = Frame.__hash__
+     def __getitem__(self, item): return self.text[item]
+@@ -1192,7 +1192,7 @@
+     """
+ 
+     _framespec = [ EncodingSpec('encoding'),
+-        MultiSpec('text', EncodedNumericTextSpec('text'), sep=u'\u0000') ]
++        MultiSpec('text', EncodedNumericTextSpec('text'), sep='\u0000') ]
+ 
+     def __pos__(self):
+         """Return the numerical value of the string."""
+@@ -1208,7 +1208,7 @@
+     """
+ 
+     _framespec = [ EncodingSpec('encoding'),
+-        MultiSpec('text', EncodedNumericPartTextSpec('text'), sep=u'\u0000') ]
++        MultiSpec('text', EncodedNumericPartTextSpec('text'), sep='\u0000') ]
+     def __pos__(self):
+         return int(self.text[0].split("/")[0])
+ 
+@@ -1220,7 +1220,7 @@
+     """
+ 
+     _framespec = [ EncodingSpec('encoding'),
+-        MultiSpec('text', TimeStampSpec('stamp'), sep=u',') ]
++        MultiSpec('text', TimeStampSpec('stamp'), sep=',') ]
+     def __str__(self): return self.__unicode__().encode('utf-8')
+     def __unicode__(self): return ','.join([stamp.text for stamp in self.text])
+     def _pprint(self):
+@@ -1268,9 +1268,9 @@
+         for value in self.text:
+             if value.isdigit():
+                 try: genres.append(self.GENRES[int(value)])
+-                except IndexError: genres.append(u"Unknown")
+-            elif value == "CR": genres.append(u"Cover")
+-            elif value == "RX": genres.append(u"Remix")
++                except IndexError: genres.append("Unknown")
++            elif value == "CR": genres.append("Cover")
++            elif value == "RX": genres.append("Remix")
+             elif value:
+                 newgenres = []
+                 genreid, dummy, genrename = genre_re.match(value).groups()
+@@ -1278,11 +1278,11 @@
+                 if genreid:
+                     for gid in genreid[1:-1].split(")("):
+                         if gid.isdigit() and int(gid) < len(self.GENRES):
+-                            gid = unicode(self.GENRES[int(gid)])
++                            gid = str(self.GENRES[int(gid)])
+                             newgenres.append(gid)
+-                        elif gid == "CR": newgenres.append(u"Cover")
+-                        elif gid == "RX": newgenres.append(u"Remix")
+-                        else: newgenres.append(u"Unknown")
++                        elif gid == "CR": newgenres.append("Cover")
++                        elif gid == "RX": newgenres.append("Remix")
++                        else: newgenres.append("Unknown")
+ 
+                 if genrename:
+                     # "Unescaping" the first parenthesis
+@@ -1294,8 +1294,8 @@
+         return genres
+ 
+     def __set_genres(self, genres):
+-        if isinstance(genres, basestring): genres = [genres]
+-        self.text = map(self.__decode, genres)
++        if isinstance(genres, str): genres = [genres]
++        self.text = list(map(self.__decode, genres))
+ 
+     def __decode(self, value):
+         if isinstance(value, str):
+@@ -1366,7 +1366,7 @@
+     the same). Many taggers use this frame to store freeform keys.
+     """
+     _framespec = [ EncodingSpec('encoding'), EncodedTextSpec('desc'),
+-        MultiSpec('text', EncodedTextSpec('text'), sep=u'\u0000') ]
++        MultiSpec('text', EncodedTextSpec('text'), sep='\u0000') ]
+     HashKey = property(lambda s: '%s:%s' % (s.FrameID, s.desc))
+     def _pprint(self): return "%s=%s" % (self.desc, " / ".join(self.text))
+ 
+@@ -1488,7 +1488,7 @@
+     """
+     _framespec = [ EncodingSpec('encoding'), StringSpec('lang', 3),
+         EncodedTextSpec('desc'),
+-        MultiSpec('text', EncodedTextSpec('text'), sep=u'\u0000') ]
++        MultiSpec('text', EncodedTextSpec('text'), sep='\u0000') ]
+     HashKey = property(lambda s: '%s:%s:%r' % (s.FrameID, s.desc, s.lang))
+     def _pprint(self): return "%s=%r=%s" % (
+         self.desc, self.lang, " / ".join(self.text))
+@@ -1590,7 +1590,7 @@
+     def __eq__(self, other): return self.count == other
+     __hash__ = Frame.__hash__
+     def __pos__(self): return self.count
+-    def _pprint(self): return unicode(self.count)
++    def _pprint(self): return str(self.count)
+ 
+ class POPM(FrameOpt):
+     """Popularimeter.
+@@ -1835,7 +1835,7 @@
+     def __eq__(self, other): return self.Fi == other
+     __hash__ = Frame.__hash__
+ 
+-Frames = dict([(k,v) for (k,v) in globals().items()
++Frames = dict([(k,v) for (k,v) in list(globals().items())
+         if len(k)==4 and isinstance(v, type) and issubclass(v, Frame)])
+ """All supported ID3v2 frames, keyed by frame name."""
+ del(k); del(v)
+@@ -1929,7 +1929,7 @@
+     _framespec = [ StringSpec('frameid', 3), Latin1TextSpec('url') ]
+     _optionalspec = [ BinaryDataSpec('data') ]
+ 
+-Frames_2_2 = dict([(k,v) for (k,v) in globals().items()
++Frames_2_2 = dict([(k,v) for (k,v) in list(globals().items())
+         if len(k)==3 and isinstance(v, type) and issubclass(v, Frame)])
+ 
+ # support open(filename) as interface
+@@ -1965,8 +1965,8 @@
+     def fix(string):
+         return string.split("\x00")[0].strip().decode('latin1')
+ 
+-    title, artist, album, year, comment = map(
+-        fix, [title, artist, album, year, comment])
++    title, artist, album, year, comment = list(map(
++        fix, [title, artist, album, year, comment]))
+ 
+     frames = {}
+     if title: frames["TIT2"] = TIT2(encoding=0, text=title)
+@@ -1987,8 +1987,8 @@
+ 
+     v1 = {}
+ 
+-    for v2id, name in {"TIT2": "title", "TPE1": "artist",
+-                       "TALB": "album"}.items():
++    for v2id, name in list({"TIT2": "title", "TPE1": "artist",
++                       "TALB": "album"}.items()):
+         if v2id in id3:
+             text = id3[v2id].text[0].encode('latin1', 'replace')[:30]
+         else:
+--- pytivo/mutagen/m4a.py	(original)
++++ pytivo/mutagen/m4a.py	(refactored)
+@@ -25,7 +25,7 @@
+ import struct
+ import sys
+ 
+-from cStringIO import StringIO
++from io import StringIO
+ 
+ from mutagen import FileType, Metadata
+ from mutagen._constants import GENRES
+@@ -119,7 +119,7 @@
+             if child.name == remaining[0]:
+                 return child[remaining[1:]]
+         else:
+-            raise KeyError, "%r not found" % remaining[0]
++            raise KeyError("%r not found" % remaining[0])
+ 
+     def __repr__(self):
+         klass = self.__class__.__name__
+@@ -166,13 +166,13 @@
+         'names' may be a list of atoms (['moov', 'udta']) or a string
+         specifying the complete path ('moov.udta').
+         """
+-        if isinstance(names, basestring):
++        if isinstance(names, str):
+             names = names.split(".")
+         for child in self.atoms:
+             if child.name == names[0]:
+                 return child[names[1:]]
+         else:
+-            raise KeyError, "%s not found" % names[0]
++            raise KeyError("%s not found" % names[0])
+ 
+     def __repr__(self):
+         return "\n".join([repr(child) for child in self.atoms])
+@@ -202,7 +202,7 @@
+ 
+     def load(self, atoms, fileobj):
+         try: ilst = atoms["moov.udta.meta.ilst"]
+-        except KeyError, key:
++        except KeyError as key:
+             raise M4AMetadataError(key)
+         for atom in ilst.children:
+             fileobj.seek(atom.offset + 8)
+@@ -219,7 +219,7 @@
+                  "\xa9gen", "gnre", "trkn", "disk",
+                  "\xa9day", "cpil", "tmpo", "\xa9too",
+                  "----", "covr", "\xa9lyr"]
+-        order = dict(zip(order, range(len(order))))
++        order = dict(list(zip(order, list(range(len(order))))))
+         last = len(order)
+         # If there's no key-based way to distinguish, order by length.
+         # If there's still no way, go by string comparison on the
+@@ -231,7 +231,7 @@
+     def save(self, filename):
+         """Save the metadata to the given filename."""
+         values = []
+-        items = self.items()
++        items = list(self.items())
+         items.sort(self.__key_sort)
+         for key, value in items:
+             render = self.__atoms.get(
+@@ -413,7 +413,7 @@
+ 
+     def pprint(self):
+         values = []
+-        for key, value in self.iteritems():
++        for key, value in self.items():
+             key = key.decode('latin1')
+             try: values.append("%s=%s" % (key, value))
+             except UnicodeDecodeError:
+@@ -477,13 +477,13 @@
+         try:
+             atoms = Atoms(fileobj)
+             try: self.info = M4AInfo(atoms, fileobj)
+-            except StandardError, err:
+-                raise M4AStreamInfoError, err, sys.exc_info()[2]
++            except Exception as err:
++                raise M4AStreamInfoError(err).with_traceback(sys.exc_info()[2])
+             try: self.tags = M4ATags(atoms, fileobj)
+             except M4AMetadataError:
+                 self.tags = None
+-            except StandardError, err:
+-                raise M4AMetadataError, err, sys.exc_info()[2]
++            except Exception as err:
++                raise M4AMetadataError(err).with_traceback(sys.exc_info()[2])
+         finally:
+             fileobj.close()
+ 
+--- pytivo/mutagen/mp3.py	(original)
++++ pytivo/mutagen/mp3.py	(refactored)
+@@ -19,7 +19,7 @@
+ class InvalidMPEGHeader(error, IOError): pass
+ 
+ # Mode values.
+-STEREO, JOINTSTEREO, DUALCHANNEL, MONO = range(4)
++STEREO, JOINTSTEREO, DUALCHANNEL, MONO = list(range(4))
+ 
+ class MPEGInfo(object):
+     """MPEG audio stream information
+@@ -46,7 +46,7 @@
+ 
+     # Map (version, layer) tuples to bitrates.
+     __BITRATE = {
+-        (1, 1): range(0, 480, 32),
++        (1, 1): list(range(0, 480, 32)),
+         (1, 2): [0, 32, 48, 56, 64, 80, 96, 112,128,160,192,224,256,320,384],
+         (1, 3): [0, 32, 40, 48, 56, 64, 80, 96, 112,128,160,192,224,256,320],
+         (2, 1): [0, 32, 48, 56, 64, 80, 96, 112,128,144,160,176,192,224,256],
+@@ -95,7 +95,7 @@
+         # and 90% through the file.
+         for i in [offset, 0.3 * size, 0.6 * size, 0.9 * size]:
+             try: self.__try(fileobj, int(i), size - offset)
+-            except error, e: pass
++            except error as e: pass
+             else: break
+         # If we can't find any two consecutive frames, try to find just
+         # one frame back at the original offset given.
+--- pytivo/mutagen/mp4.py	(original)
++++ pytivo/mutagen/mp4.py	(refactored)
+@@ -121,7 +121,7 @@
+             if child.name == remaining[0]:
+                 return child[remaining[1:]]
+         else:
+-            raise KeyError, "%r not found" % remaining[0]
++            raise KeyError("%r not found" % remaining[0])
+ 
+     def __repr__(self):
+         klass = self.__class__.__name__
+@@ -168,13 +168,13 @@
+         'names' may be a list of atoms (['moov', 'udta']) or a string
+         specifying the complete path ('moov.udta').
+         """
+-        if isinstance(names, basestring):
++        if isinstance(names, str):
+             names = names.split(".")
+         for child in self.atoms:
+             if child.name == names[0]:
+                 return child[names[1:]]
+         else:
+-            raise KeyError, "%s not found" % names[0]
++            raise KeyError("%s not found" % names[0])
+ 
+     def __repr__(self):
+         return "\n".join([repr(child) for child in self.atoms])
+@@ -242,7 +242,7 @@
+ 
+     def load(self, atoms, fileobj):
+         try: ilst = atoms["moov.udta.meta.ilst"]
+-        except KeyError, key:
++        except KeyError as key:
+             raise MP4MetadataError(key)
+         for atom in ilst.children:
+             fileobj.seek(atom.offset + 8)
+@@ -260,7 +260,7 @@
+                  "\xa9day", "cpil", "pgap", "pcst", "tmpo",
+                  "\xa9too", "----", "covr", "\xa9lyr",
+ +                "stik", "tvsh", "tven", "tvsn", "tves", "tvnn"]
+-        order = dict(zip(order, range(len(order))))
++        order = dict(list(zip(order, list(range(len(order))))))
+         last = len(order)
+         # If there's no key-based way to distinguish, order by length.
+         # If there's still no way, go by string comparison on the
+@@ -272,14 +272,14 @@
+     def save(self, filename):
+         """Save the metadata to the given filename."""
+         values = []
+-        items = self.items()
++        items = list(self.items())
+         items.sort(self.__key_sort)
+         for key, value in items:
+             info = self.__atoms.get(key[:4], (None, type(self).__render_text))
+             try:
+                 values.append(info[1](self, key, value, *info[2:]))
+-            except (TypeError, ValueError), s:
+-                raise MP4MetadataValueError, s, sys.exc_info()[2]
++            except (TypeError, ValueError) as s:
++                raise MP4MetadataValueError(s).with_traceback(sys.exc_info()[2])
+         data = Atom.render("ilst", "".join(values))
+ 
+         # Find the old atoms.
+@@ -443,7 +443,7 @@
+         dummy, mean, name = key.split(":", 2)
+         mean = struct.pack(">I4sI", len(mean) + 12, "mean", 0) + mean
+         name = struct.pack(">I4sI", len(name) + 12, "name", 0) + name
+-        if isinstance(value, basestring):
++        if isinstance(value, str):
+             value = [value]
+         return Atom.render("----", mean + name + "".join([
+             struct.pack(">I4s2I", len(data) + 16, "data", 1, 0) + data
+@@ -495,7 +495,7 @@
+             raise MP4MetadataValueError(
+                 "tmpo must be a list of 16 bit integers")
+ 
+-        values = map(cdata.to_ushort_be, value)
++        values = list(map(cdata.to_ushort_be, value))
+         return self.__render_data(key, 0x15, values)
+ 
+     def __parse_8int(self, atom, data):
+@@ -575,10 +575,10 @@
+         if value:
+             self[atom.name] = value
+     def __render_text(self, key, value, flags=1):
+-        if isinstance(value, basestring):
++        if isinstance(value, str):
+             value = [value]
+         return self.__render_data(
+-            key, flags, map(utf8, value))
++            key, flags, list(map(utf8, value)))
+ 
+     def delete(self, filename):
+         self.clear()
+@@ -605,13 +605,13 @@
+ 
+     def pprint(self):
+         values = []
+-        for key, value in self.iteritems():
++        for key, value in self.items():
+             key = key.decode('latin1')
+             if key == "covr":
+                 values.append("%s=%s" % (key, ", ".join(
+                     ["[%d bytes of data]" % len(data) for data in value])))
+             elif isinstance(value, list):
+-                values.append("%s=%s" % (key, " / ".join(map(unicode, value))))
++                values.append("%s=%s" % (key, " / ".join(map(str, value))))
+             else:
+                 values.append("%s=%s" % (key, value))
+         return "\n".join(values)
+@@ -707,13 +707,13 @@
+         try:
+             atoms = Atoms(fileobj)
+             try: self.info = MP4Info(atoms, fileobj)
+-            except StandardError, err:
+-                raise MP4StreamInfoError, err, sys.exc_info()[2]
++            except Exception as err:
++                raise MP4StreamInfoError(err).with_traceback(sys.exc_info()[2])
+             try: self.tags = self.MP4Tags(atoms, fileobj)
+             except MP4MetadataError:
+                 self.tags = None
+-            except StandardError, err:
+-                raise MP4MetadataError, err, sys.exc_info()[2]
++            except Exception as err:
++                raise MP4MetadataError(err).with_traceback(sys.exc_info()[2])
+         finally:
+             fileobj.close()
+ 
+--- pytivo/mutagen/ogg.py	(original)
++++ pytivo/mutagen/ogg.py	(refactored)
+@@ -20,7 +20,7 @@
+ import sys
+ import zlib
+ 
+-from cStringIO import StringIO
++from io import StringIO
+ 
+ from mutagen import FileType
+ from mutagen._util import cdata, insert_bytes, delete_bytes
+@@ -57,7 +57,7 @@
+ 
+     version = 0
+     __type_flags = 0
+-    position = 0L
++    position = 0
+     serial = 0
+     sequence = 0
+     offset = None
+@@ -103,8 +103,8 @@
+             lacings.append(total)
+             self.complete = False
+ 
+-        self.packets = map(fileobj.read, lacings)
+-        if map(len, self.packets) != lacings:
++        self.packets = list(map(fileobj.read, lacings))
++        if list(map(len, self.packets)) != lacings:
+             raise error("unable to read full data")
+ 
+     def __eq__(self, other):
+@@ -303,7 +303,7 @@
+                     if page.packets[-1]:
+                         page.complete = False
+                         if len(page.packets) == 1:
+-                            page.position = -1L
++                            page.position = -1
+                     else:
+                         page.packets.pop(-1)
+                     pages.append(page)
+@@ -336,7 +336,7 @@
+ 
+         # Number the new pages starting from the first old page.
+         first = old_pages[0].sequence
+-        for page, seq in zip(new_pages, range(first, first + len(new_pages))):
++        for page, seq in zip(new_pages, list(range(first, first + len(new_pages)))):
+             page.sequence = seq
+             page.serial = old_pages[0].serial
+ 
+@@ -348,7 +348,7 @@
+         new_pages[-1].last = old_pages[-1].last
+         new_pages[-1].complete = old_pages[-1].complete
+         if not new_pages[-1].complete and len(new_pages[-1].packets) == 1:
+-            new_pages[-1].position = -1L
++            new_pages[-1].position = -1
+ 
+         new_data = "".join(map(klass.write, new_pages))
+ 
+@@ -456,10 +456,10 @@
+                     denom = self.info.fps
+                 self.info.length = samples / float(denom)
+ 
+-            except error, e:
+-                raise self._Error, e, sys.exc_info()[2]
++            except error as e:
++                raise self._Error(e).with_traceback(sys.exc_info()[2])
+             except EOFError:
+-                raise self._Error, "no appropriate stream found"
++                raise self._Error("no appropriate stream found")
+         finally:
+             fileobj.close()
+ 
+@@ -475,10 +475,10 @@
+         fileobj = open(filename, "rb+")
+         try:
+             try: self.tags._inject(fileobj)
+-            except error, e:
+-                raise self._Error, e, sys.exc_info()[2]
++            except error as e:
++                raise self._Error(e).with_traceback(sys.exc_info()[2])
+             except EOFError:
+-                raise self._Error, "no appropriate stream found"
++                raise self._Error("no appropriate stream found")
+         finally:
+             fileobj.close()
+ 
+@@ -492,9 +492,9 @@
+         fileobj = open(filename, "rb+")
+         try:
+             try: self.tags._inject(fileobj)
+-            except error, e:
+-                raise self._Error, e, sys.exc_info()[2]
++            except error as e:
++                raise self._Error(e).with_traceback(sys.exc_info()[2])
+             except EOFError:
+-                raise self._Error, "no appropriate stream found"
++                raise self._Error("no appropriate stream found")
+         finally:
+             fileobj.close()
+--- pytivo/mutagen/oggflac.py	(original)
++++ pytivo/mutagen/oggflac.py	(refactored)
+@@ -21,7 +21,7 @@
+ 
+ import struct
+ 
+-from cStringIO import StringIO
++from io import StringIO
+ 
+ from mutagen.flac import StreamInfo, VCFLACDict
+ from mutagen.ogg import OggPage, OggFileType, error as OggError
+--- pytivo/plugins/music/music.py	(original)
++++ pytivo/plugins/music/music.py	(refactored)
+@@ -6,7 +6,7 @@
+ import sys
+ import time
+ import unicodedata
+-import urllib
++import urllib.request, urllib.parse, urllib.error
+ from xml.sax.saxutils import escape
+ 
+ import mutagen
+@@ -30,9 +30,9 @@
+ 
+ TAGNAMES = {'artist': ['\xa9ART', 'Author'],
+             'title': ['\xa9nam', 'Title'],
+-            'album': ['\xa9alb', u'WM/AlbumTitle'],
+-            'date': ['\xa9day', u'WM/Year'],
+-            'genre': ['\xa9gen', u'WM/Genre']}
++            'album': ['\xa9alb', 'WM/AlbumTitle'],
++            'date': ['\xa9day', 'WM/Year'],
++            'genre': ['\xa9gen', 'WM/Genre']}
+ 
+ BLOCKSIZE = 64 * 1024
+ 
+@@ -95,7 +95,7 @@
+         duration = int(query.get('Duration', [0])[0])
+         always = (handler.container.getboolean('force_ffmpeg') and
+                   config.get_bin('ffmpeg'))
+-        fname = unicode(path, 'utf-8')
++        fname = str(path, 'utf-8')
+ 
+         ext = os.path.splitext(fname)[1].lower()
+         needs_transcode = ext in TRANSCODE or seek or duration or always
+@@ -133,7 +133,7 @@
+                     handler.wfile.write('%x\r\n' % len(block))
+                     handler.wfile.write(block)
+                     handler.wfile.write('\r\n')
+-                except Exception, msg:
++                except Exception as msg:
+                     handler.server.logger.info(msg)
+                     kill(ffmpeg)
+                     break
+@@ -150,7 +150,7 @@
+ 
+         try:
+             handler.wfile.flush()
+-        except Exception, msg:
++        except Exception as msg:
+             handler.server.logger.info(msg)
+ 
+     def QueryContainer(self, handler, query):
+@@ -205,7 +205,7 @@
+             #item['ArtistName'] = artist
+ 
+             ext = os.path.splitext(f.name)[1].lower()
+-            fname = unicode(f.name, 'utf-8')
++            fname = str(f.name, 'utf-8')
+ 
+             try:
+                 # If the file is an mp3, let's load the EasyID3 interface
+@@ -226,7 +226,7 @@
+                             try:
+                                 if tag in d:
+                                     value = d[tag][0]
+-                                    if type(value) not in [str, unicode]:
++                                    if type(value) not in [str, str]:
+                                         value = str(value)
+                                     return value
+                             except:
+@@ -242,8 +242,8 @@
+                     item['AlbumTitle'] = get_tag('album', audioFile)
+                     item['AlbumYear'] = get_tag('date', audioFile)[:4]
+                     item['MusicGenre'] = get_tag('genre', audioFile)
+-            except Exception, msg:
+-                print msg
++            except Exception as msg:
++                print(msg)
+ 
+             ffmpeg_path = config.get_bin('ffmpeg')
+             if 'Duration' not in item and ffmpeg_path:
+@@ -255,7 +255,7 @@
+                                                stdin=subprocess.PIPE)
+ 
+                 # wait 10 sec if ffmpeg is not back give up
+-                for i in xrange(200):
++                for i in range(200):
+                     time.sleep(.05)
+                     if not ffmpeg.poll() == None:
+                         break
+@@ -293,7 +293,7 @@
+             t = Template(FOLDER_TEMPLATE, filter=EncodeUnicode)
+             t.files, t.total, t.start = self.get_files(handler, query,
+                                                        AudioFileFilter)
+-        t.files = map(media_data, t.files)
++        t.files = list(map(media_data, t.files))
+         t.container = handler.cname
+         t.name = subcname
+         t.quote = quote
+@@ -302,7 +302,7 @@
+         handler.send_xml(str(t))
+ 
+     def QueryItem(self, handler, query):
+-        uq = urllib.unquote_plus
++        uq = urllib.parse.unquote_plus
+         splitpath = [x for x in uq(query['Url'][0]).split('/') if x]
+         path = os.path.join(handler.container['path'], *splitpath[1:])
+ 
+@@ -321,9 +321,9 @@
+         try:
+             url = list_name.index('http://')
+             list_name = list_name[url:]
+-            list_file = urllib.urlopen(list_name)
++            list_file = urllib.request.urlopen(list_name)
+         except:
+-            list_file = open(unicode(list_name, 'utf-8'))
++            list_file = open(str(list_name, 'utf-8'))
+             local_path = os.path.sep.join(list_name.split(os.path.sep)[:-1])
+ 
+         if ext in ('.m3u', '.pls'):
+@@ -334,7 +334,7 @@
+         if ext in ('.wpl', '.asx', '.wax', '.wvx', '.b4s'):
+             playlist = []
+             for line in list_file:
+-                line = unicode(line, charset).encode('utf-8')
++                line = str(line, charset).encode('utf-8')
+                 if ext == '.wpl':
+                     s = wplfile(line)
+                 elif ext == '.b4s':
+@@ -347,7 +347,7 @@
+         elif ext == '.pls':
+             names, titles, lengths = {}, {}, {}
+             for line in list_file:
+-                line = unicode(line, charset).encode('utf-8')
++                line = str(line, charset).encode('utf-8')
+                 s = plsfile(line)
+                 if s:
+                     names[s.group(1)] = s.group(2)
+@@ -372,7 +372,7 @@
+             duration, title = 0, ''
+             playlist = []
+             for line in list_file:
+-                line = unicode(line.strip(), charset).encode('utf-8')
++                line = str(line.strip(), charset).encode('utf-8')
+                 if line:
+                     if line.startswith('#EXTINF:'):
+                         try:
+@@ -391,7 +391,7 @@
+         list_file.close()
+ 
+         # Expand relative paths
+-        for i in xrange(len(playlist)):
++        for i in range(len(playlist)):
+             if not '://' in playlist[i].name:
+                 name = playlist[i].name
+                 if not os.path.isabs(name):
+@@ -421,7 +421,7 @@
+  
+         def build_recursive_list(path, recurse=True):
+             files = []
+-            path = unicode(path, 'utf-8')
++            path = str(path, 'utf-8')
+             try:
+                 for f in os.listdir(path):
+                     if f.startswith('.'):
+@@ -466,7 +466,7 @@
+             if path in rc:
+                 filelist = rc[path]
+         else:
+-            updated = os.path.getmtime(unicode(path, 'utf-8'))
++            updated = os.path.getmtime(str(path, 'utf-8'))
+             if path in dc and dc.mtime(path) >= updated:
+                 filelist = dc[path]
+             for p in rc:
+--- pytivo/plugins/photo/photo.py	(original)
++++ pytivo/plugins/photo/photo.py	(refactored)
+@@ -33,8 +33,8 @@
+ import threading
+ import time
+ import unicodedata
+-import urllib
+-from cStringIO import StringIO
++import urllib.request, urllib.parse, urllib.error
++from io import StringIO
+ from xml.sax.saxutils import escape
+ 
+ use_pil = True
+@@ -45,7 +45,7 @@
+         import Image
+     except ImportError:
+         use_pil = False
+-        print 'Python Imaging Library not found; using FFmpeg'
++        print('Python Imaging Library not found; using FFmpeg')
+ 
+ import config
+ from Cheetah.Template import Template
+@@ -171,14 +171,14 @@
+     def get_image_pil(self, path, width, height, pshape, rot, attrs):
+         # Load
+         try:
+-            pic = Image.open(unicode(path, 'utf-8'))
+-        except Exception, msg:
++            pic = Image.open(str(path, 'utf-8'))
++        except Exception as msg:
+             return False, 'Could not open %s -- %s' % (path, msg)
+ 
+         # Set draft mode
+         try:
+             pic.draft('RGB', (width, height))
+-        except Exception, msg:
++        except Exception as msg:
+             return False, 'Failed to set draft mode for %s -- %s' % (path, msg)
+ 
+         # Read Exif data if possible
+@@ -189,14 +189,14 @@
+         try:
+             if rot:
+                 pic = pic.rotate(rot)
+-        except Exception, msg:
++        except Exception as msg:
+             return False, 'Rotate failed on %s -- %s' % (path, msg)
+ 
+         # De-palletize
+         try:
+             if pic.mode not in ('RGB', 'L'):
+                 pic = pic.convert('RGB')
+-        except Exception, msg:
++        except Exception as msg:
+             return False, 'Palette conversion failed on %s -- %s' % (path, msg)
+ 
+         # Old size
+@@ -206,7 +206,7 @@
+ 
+         try:
+             pic = pic.resize((width, height), Image.ANTIALIAS)
+-        except Exception, msg:
++        except Exception as msg:
+             return False, 'Resize failed on %s -- %s' % (path, msg)
+ 
+         # Re-encode
+@@ -215,7 +215,7 @@
+             pic.save(out, 'JPEG', quality=85)
+             encoded = out.getvalue()
+             out.close()
+-        except Exception, msg:
++        except Exception as msg:
+             return False, 'Encode failed on %s -- %s' % (path, msg)
+ 
+         return True, encoded
+@@ -232,7 +232,7 @@
+         # wait configured # of seconds: if ffmpeg is not back give up
+         limit = config.getFFmpegWait()
+         if limit:
+-            for i in xrange(limit * 20):
++            for i in range(limit * 20):
+                 time.sleep(.05)
+                 if not ffmpeg.poll() == None:
+                     break
+@@ -261,7 +261,7 @@
+         if not ffmpeg_path:
+             return False, 'FFmpeg not found'
+ 
+-        fname = unicode(path, 'utf-8')
++        fname = str(path, 'utf-8')
+         if sys.platform == 'win32':
+             fname = fname.encode('cp1252')
+ 
+@@ -308,7 +308,7 @@
+         # wait configured # of seconds: if ffmpeg is not back give up
+         limit = config.getFFmpegWait()
+         if limit:
+-            for i in xrange(limit * 20):
++            for i in range(limit * 20):
+                 time.sleep(.05)
+                 if not ffmpeg.poll() == None:
+                     break
+@@ -428,14 +428,14 @@
+         t.container = handler.cname
+         t.files, t.total, t.start = self.get_files(handler, query,
+             ImageFileFilter)
+-        t.files = map(media_data, t.files)
++        t.files = list(map(media_data, t.files))
+         t.quote = quote
+         t.escape = escape
+ 
+         handler.send_xml(str(t))
+ 
+     def QueryItem(self, handler, query):
+-        uq = urllib.unquote_plus
++        uq = urllib.parse.unquote_plus
+         splitpath = [x for x in uq(query['Url'][0]).split('/') if x]
+         path = os.path.join(handler.container['path'], *splitpath[1:])
+ 
+@@ -453,7 +453,7 @@
+             def __init__(self, name, isdir):
+                 self.name = name
+                 self.isdir = isdir
+-                st = os.stat(unicode(name, 'utf-8'))
++                st = os.stat(str(name, 'utf-8'))
+                 self.cdate = st.st_ctime
+                 self.mdate = st.st_mtime
+ 
+@@ -473,7 +473,7 @@
+ 
+         def build_recursive_list(path, recurse=True):
+             files = []
+-            path = unicode(path, 'utf-8')
++            path = str(path, 'utf-8')
+             try:
+                 for f in os.listdir(path):
+                     if f.startswith('.'):
+@@ -520,7 +520,7 @@
+             if path in rc:
+                 filelist = rc[path]
+         else:
+-            updated = os.path.getmtime(unicode(path, 'utf-8'))
++            updated = os.path.getmtime(str(path, 'utf-8'))
+             if path in dc and dc.mtime(path) >= updated:
+                 filelist = dc[path]
+             for p in rc:
+--- pytivo/plugins/settings/settings.py	(original)
++++ pytivo/plugins/settings/settings.py	(refactored)
+@@ -1,10 +1,10 @@
+ import logging
+ import os
+-from urllib import quote
++from urllib.parse import quote
+ 
+ from Cheetah.Template import Template
+ 
+-import buildhelp
++from . import buildhelp
+ import config
+ from plugin import EncodeUnicode, Plugin
+ 
+@@ -105,7 +105,7 @@
+         if config.config.has_section(section):
+             config.config.remove_section(section)
+         config.config.add_section(section)
+-        for key, value in query.items():
++        for key, value in list(query.items()):
+             key = key.replace('opts.', '', 1)
+             if key.startswith(label + '.'):
+                 _, option = key.split('.')
+--- pytivo/plugins/togo/togo.py	(original)
++++ pytivo/plugins/togo/togo.py	(refactored)
+@@ -1,14 +1,14 @@
+ import cgi
+-import cookielib
++import http.cookiejar
+ import logging
+ import os
+ import subprocess
+ import sys
+-import thread
++import _thread
+ import time
+-import urllib2
+-import urlparse
+-from urllib import quote, unquote
++import urllib.request, urllib.error, urllib.parse
++import urllib.parse
++from urllib.parse import quote, unquote
+ from xml.dom import minidom
+ 
+ from Cheetah.Template import Template
+@@ -65,15 +65,15 @@
+ details_urls = {} # URLs for extended data, indexed by main URL
+ 
+ def null_cookie(name, value):
+-    return cookielib.Cookie(0, name, value, None, False, '', False, 
++    return http.cookiejar.Cookie(0, name, value, None, False, '', False, 
+         False, '', False, False, None, False, None, None, None)
+ 
+-auth_handler = urllib2.HTTPPasswordMgrWithDefaultRealm()
+-cj = cookielib.CookieJar()
++auth_handler = urllib.request.HTTPPasswordMgrWithDefaultRealm()
++cj = http.cookiejar.CookieJar()
+ cj.set_cookie(null_cookie('sid', 'ADEADDA7EDEBAC1E'))
+-tivo_opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj), 
+-                                   urllib2.HTTPBasicAuthHandler(auth_handler),
+-                                   urllib2.HTTPDigestAuthHandler(auth_handler))
++tivo_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj), 
++                                   urllib.request.HTTPBasicAuthHandler(auth_handler),
++                                   urllib.request.HTTPDigestAuthHandler(auth_handler))
+ 
+ tsn = config.get_server('togo_tsn')
+ if tsn:
+@@ -90,7 +90,7 @@
+                 return tivo_opener.open(url)
+ 
+             # Do a retry if the TiVo responds that the server is busy
+-            except urllib2.HTTPError, e:
++            except urllib.error.HTTPError as e:
+                 if e.code == 503:
+                     time.sleep(5)
+                     continue
+@@ -129,7 +129,7 @@
+             theurl = baseurl
+             if 'Folder' in query:
+                 folder = query['Folder'][0]
+-                theurl = urlparse.urljoin(theurl, folder)
++                theurl = urllib.parse.urljoin(theurl, folder)
+             theurl += '&ItemCount=%d' % shows_per_page
+             if 'AnchorItem' in query:
+                 theurl += '&AnchorItem=' + quote(query['AnchorItem'][0])
+@@ -142,7 +142,7 @@
+                 auth_handler.add_password('TiVo DVR', ip_port, 'tivo', tivo_mak)
+                 try:
+                     page = self.tivo_open(theurl)
+-                except IOError, e:
++                except IOError as e:
+                     handler.redir(UNABLE % (tivoIP, cgi.escape(str(e))), 10)
+                     return
+                 tivo_cache[theurl] = {'thepage': minidom.parse(page),
+@@ -199,7 +199,7 @@
+                         entry['CaptureDate'] = time.strftime('%b %d, %Y',
+                             time.localtime(int(entry['CaptureDate'], 16)))
+ 
+-                    url = urlparse.urljoin(baseurl, entry['Url'])
++                    url = urllib.parse.urljoin(baseurl, entry['Url'])
+                     entry['Url'] = url
+                     if url in basic_meta:
+                         entry.update(basic_meta[url])
+@@ -244,9 +244,9 @@
+         # global status
+         status[url].update({'running': True, 'queued': False})
+ 
+-        parse_url = urlparse.urlparse(url)
+-
+-        name = unicode(unquote(parse_url[2]), 'utf-8').split('/')[-1].split('.')
++        parse_url = urllib.parse.urlparse(url)
++
++        name = str(unquote(parse_url[2]), 'utf-8').split('/')[-1].split('.')
+         try:
+             id = unquote(parse_url[4]).split('id=')[1]
+             name.insert(-1, ' - ' + id)
+@@ -287,7 +287,7 @@
+                 handle = self.tivo_open(url + '&Format=video/x-tivo-mpeg-ts')
+             else:
+                 handle = self.tivo_open(url)
+-        except Exception, msg:
++        except Exception as msg:
+             status[url]['running'] = False
+             status[url]['error'] = str(msg)
+             return
+@@ -329,7 +329,7 @@
+                     last_interval = now
+             if status[url]['running']:
+                 status[url]['finished'] = True
+-        except Exception, msg:
++        except Exception as msg:
+             status[url]['running'] = False
+             logger.info(msg)
+         handle.close()
+@@ -384,12 +384,12 @@
+                     queue[tivoIP].append(theurl)
+                 else:
+                     queue[tivoIP] = [theurl]
+-                    thread.start_new_thread(ToGo.process_queue,
++                    _thread.start_new_thread(ToGo.process_queue,
+                                             (self, tivoIP, tivo_mak, togo_path))
+                 logger.info('[%s] Queued "%s" for transfer to %s' %
+                             (time.strftime('%d/%b/%Y %H:%M:%S'),
+                              unquote(theurl), togo_path))
+-            urlstring = '<br>'.join([unicode(unquote(x), 'utf-8')
++            urlstring = '<br>'.join([str(unquote(x), 'utf-8')
+                                      for x in urls])
+             message = TRANS_QUEUE % (urlstring, togo_path)
+         else:
+--- pytivo/plugins/video/transcode.py	(original)
++++ pytivo/plugins/video/transcode.py	(refactored)
+@@ -81,7 +81,7 @@
+ 
+     ffmpeg_path = config.get_bin('ffmpeg')
+ 
+-    fname = unicode(inFile, 'utf-8')
++    fname = str(inFile, 'utf-8')
+     if mswindows:
+         fname = fname.encode('cp1252')
+ 
+@@ -142,7 +142,7 @@
+                 count += len(block)
+             offset -= length
+         outFile.flush()
+-    except Exception, msg:
++    except Exception as msg:
+         logger.info(msg)
+         return count
+ 
+@@ -160,7 +160,7 @@
+         try:
+             block = proc['process'].stdout.read(BLOCKSIZE)
+             proc['last_read'] = time.time()
+-        except Exception, msg:
++        except Exception as msg:
+             logger.info(msg)
+             cleanup(inFile)
+             kill(proc['process'])
+@@ -169,7 +169,7 @@
+         if not block:
+             try:
+                 outFile.flush()
+-            except Exception, msg:
++            except Exception as msg:
+                 logger.info(msg)
+             else:
+                 cleanup(inFile)
+@@ -186,7 +186,7 @@
+             outFile.write(block)
+             outFile.write('\r\n')
+             count += len(block)
+-        except Exception, msg:
++        except Exception as msg:
+             logger.info(msg)
+             break
+ 
+@@ -653,7 +653,7 @@
+ 
+ def video_info(inFile, cache=True):
+     vInfo = dict()
+-    fname = unicode(inFile, 'utf-8')
++    fname = str(inFile, 'utf-8')
+     mtime = os.path.getmtime(fname)
+     if cache:
+         if inFile in info_cache and info_cache[inFile][0] == mtime:
+@@ -684,7 +684,7 @@
+     # wait configured # of seconds: if ffmpeg is not back give up
+     limit = config.getFFmpegWait()
+     if limit:
+-        for i in xrange(limit * 20):
++        for i in range(limit * 20):
+             time.sleep(.05)
+             if not ffmpeg.poll() == None:
+                 break
+@@ -878,9 +878,9 @@
+             if key.startswith('Override_mapAudio'):
+                 audiomap = dict(vInfo['mapAudio'])
+                 newmap = shlex.split(data[key])
+-                audiomap.update(zip(newmap[::2], newmap[1::2]))
+-                vInfo['mapAudio'] = sorted(audiomap.items(),
+-                                           key=lambda (k,v): (k,v))
++                audiomap.update(list(zip(newmap[::2], newmap[1::2])))
++                vInfo['mapAudio'] = sorted(list(audiomap.items()),
++                                           key=lambda k_v: (k_v[0],k_v[1]))
+             elif key.startswith('Override_millisecs'):
+                 vInfo[key.replace('Override_', '')] = int(data[key])
+             else:
+@@ -888,13 +888,13 @@
+ 
+     if cache:
+         info_cache[inFile] = (mtime, vInfo)
+-    debug("; ".join(["%s=%s" % (k, v) for k, v in vInfo.items()]))
++    debug("; ".join(["%s=%s" % (k, v) for k, v in list(vInfo.items())]))
+     return vInfo
+ 
+ def audio_check(inFile, tsn):
+     cmd_string = ('-y -c:v mpeg2video -r 29.97 -b:v 1000k -c:a copy ' +
+                   select_audiolang(inFile, tsn) + ' -t 00:00:01 -f vob -')
+-    fname = unicode(inFile, 'utf-8')
++    fname = str(inFile, 'utf-8')
+     if mswindows:
+         fname = fname.encode('cp1252')
+     cmd = [config.get_bin('ffmpeg'), '-i', fname] + cmd_string.split()
+@@ -926,7 +926,7 @@
+         win32kill(popen.pid)
+     else:
+         import os, signal
+-        for i in xrange(3):
++        for i in range(3):
+             debug('sending SIGTERM to pid: %s' % popen.pid)
+             os.kill(popen.pid, signal.SIGTERM)
+             time.sleep(.5)
+--- pytivo/plugins/video/video.py	(original)
++++ pytivo/plugins/video/video.py	(refactored)
+@@ -3,9 +3,9 @@
+ import os
+ import re
+ import struct
+-import thread
++import _thread
+ import time
+-import urllib
++import urllib.request, urllib.parse, urllib.error
+ import zlib
+ from UserDict import DictMixin
+ from datetime import datetime, timedelta
+@@ -16,7 +16,7 @@
+ 
+ import config
+ import metadata
+-import transcode
++from . import transcode
+ from plugin import EncodeUnicode, Plugin, quote
+ 
+ logger = logging.getLogger('pyTivo.video.video')
+@@ -65,7 +65,7 @@
+     tvbus_cache = LRUCache(1)
+ 
+     def video_file_filter(self, full_path, type=None):
+-        if os.path.isdir(unicode(full_path, 'utf-8')):
++        if os.path.isdir(str(full_path, 'utf-8')):
+             return True
+         if use_extensions:
+             return os.path.splitext(full_path)[1].lower() in EXTENSIONS
+@@ -108,7 +108,7 @@
+         #faking = (mime in ['video/x-tivo-mpeg-ts', 'video/x-tivo-mpeg'] and
+         faking = (mime == 'video/x-tivo-mpeg' and
+                   not (is_tivo_file and compatible))
+-        fname = unicode(path, 'utf-8')
++        fname = str(path, 'utf-8')
+         thead = ''
+         if faking:
+             thead = self.tivo_header(tsn, path, mime)
+@@ -145,7 +145,7 @@
+                             break
+                         handler.wfile.write(block)
+                         count += len(block)
+-                except Exception, msg:
++                except Exception as msg:
+                     logger.info(msg)
+                 f.close()
+             else:
+@@ -160,7 +160,7 @@
+             if not compatible:
+                  handler.wfile.write('0\r\n\r\n')
+             handler.wfile.flush()
+-        except Exception, msg:
++        except Exception as msg:
+             logger.info(msg)
+ 
+         mega_elapsed = (time.time() - start) * 1024 * 1024
+@@ -177,7 +177,7 @@
+     def __total_items(self, full_path):
+         count = 0
+         try:
+-            full_path = unicode(full_path, 'utf-8')
++            full_path = str(full_path, 'utf-8')
+             for f in os.listdir(full_path):
+                 if f.startswith('.'):
+                     continue
+@@ -199,7 +199,7 @@
+         # Size is estimated by taking audio and video bit rate adding 2%
+ 
+         if transcode.tivo_compatible(full_path, tsn, mime)[0]:
+-            return os.path.getsize(unicode(full_path, 'utf-8'))
++            return os.path.getsize(str(full_path, 'utf-8'))
+         else:
+             # Must be re-encoded
+             audioBPS = config.getMaxAudioBR(tsn) * 1000
+@@ -243,7 +243,7 @@
+                 ['TRANSCODE=%s, %s' % (['YES', 'NO'][compatible], reason)] +
+                 ['SOURCE INFO: '] +
+                 ["%s=%s" % (k, v)
+-                 for k, v in sorted(vInfo.items(), reverse=True)] +
++                 for k, v in sorted(list(vInfo.items()), reverse=True)] +
+                 ['TRANSCODE OPTIONS: '] +
+                 transcode_options +
+                 ['SOURCE FILE: ', os.path.basename(full_path)]
+@@ -253,7 +253,7 @@
+         if 'time' in data:
+             if data['time'].lower() == 'file':
+                 if not mtime:
+-                    mtime = os.path.getmtime(unicode(full_path, 'utf-8'))
++                    mtime = os.path.getmtime(str(full_path, 'utf-8'))
+                 try:
+                     now = datetime.utcfromtimestamp(mtime)
+                 except:
+@@ -312,7 +312,7 @@
+             try:
+                 ltime = time.localtime(mtime)
+             except:
+-                logger.warning('Bad file time on ' + unicode(f.name, 'utf-8'))
++                logger.warning('Bad file time on ' + str(f.name, 'utf-8'))
+                 mtime = time.time()
+                 ltime = time.localtime(mtime)
+             video['captureDate'] = hex(int(mtime))
+@@ -457,13 +457,13 @@
+         del self.d[key]
+ 
+     def keys(self):
+-        return self.d.keys()
++        return list(self.d.keys())
+ 
+     def __iter__(self):
+         return self.d.__iter__()
+ 
+     def iteritems(self):
+-        return self.d.iteritems()
++        return iter(self.d.items())
+ 
+     def default(self, key):
+         defaults = {
