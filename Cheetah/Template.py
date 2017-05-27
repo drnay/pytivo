@@ -37,7 +37,7 @@ import collections
 try:
     from types import StringTypes
 except ImportError:
-    StringTypes = (bytes,str)
+    StringTypes = (bytes, str)
 try:
     from types import BooleanType
     boolTypeAvailable = True
@@ -86,15 +86,14 @@ def hashList(l):
     return hash(tuple(hashedList))
 
 def hashDict(d):
-    items = list(d.items())
-    items.sort()
+    items = sorted(list(d.items()))
     hashedList = []
     for k, v in items:
         if isinstance(v, dict):
             v = hashDict(v)
         elif isinstance(v, list):
             v = hashList(v)
-        hashedList.append((k,v))
+        hashedList.append((k, v))
     return hash(tuple(hashedList))
 
 ################################################################################
@@ -107,7 +106,7 @@ def _genUniqueModuleName(baseModuleName):
         finalName = baseModuleName
     else:
         finalName = ('cheetah_%s_%s_%s'%(baseModuleName,
-                                         str(time.time()).replace('.','_'),
+                                         str(time.time()).replace('.', '_'),
                                          str(randrange(10000, 99999))))
     return finalName
 
@@ -279,8 +278,8 @@ class Template(Servlet):
          '_getTemplateAPIClassForIncludeDirectiveCompilation',
          )
     _CHEETAH_requiredCheetahClassMethods = ('subclass',) 
-    _CHEETAH_requiredCheetahClassAttributes = ('cacheRegionClass','cacheStore',
-                                               'cacheStoreIdPrefix','cacheStoreClass')
+    _CHEETAH_requiredCheetahClassAttributes = ('cacheRegionClass', 'cacheStore',
+                                               'cacheStoreIdPrefix', 'cacheStoreClass')
 
     ## the following are used by .compile(). Most are documented in its docstring.
     _CHEETAH_cacheModuleFilesForTracebacks = False
@@ -596,22 +595,22 @@ class Template(Servlet):
             if boolTypeAvailable:         
                 B = bool
             
-            vt(source, 'source', [N,S,U], 'string or None')
-            vt(file, 'file',[N,S,U,F], 'string, file-like object, or None')
+            vt(source, 'source', [N, S, U], 'string or None')
+            vt(file, 'file', [N, S, U, F], 'string, file-like object, or None')
 
             baseclass = valOrDefault(baseclass, klass._CHEETAH_defaultBaseclassForTemplates)
             if isinstance(baseclass, Template):
                 baseclass = baseclass.__class__
-            vt(baseclass, 'baseclass', [N,S,C,type], 'string, class or None')
+            vt(baseclass, 'baseclass', [N, S, C, type], 'string, class or None')
 
             cacheCompilationResults = valOrDefault(
                 cacheCompilationResults, klass._CHEETAH_cacheCompilationResults)
             if boolTypeAvailable:         
-                vt(cacheCompilationResults, 'cacheCompilationResults', [I,B], 'boolean')
+                vt(cacheCompilationResults, 'cacheCompilationResults', [I, B], 'boolean')
 
             useCache = valOrDefault(useCache, klass._CHEETAH_useCompilationCache)
             if boolTypeAvailable:         
-                vt(cacheCompilationResults, 'cacheCompilationResults', [I,B], 'boolean')
+                vt(cacheCompilationResults, 'cacheCompilationResults', [I, B], 'boolean')
 
             compilerSettings = valOrDefault(
                 compilerSettings, klass._getCompilerSettings(source, file) or {})
@@ -624,9 +623,9 @@ class Template(Servlet):
             keepRefToGeneratedCode = valOrDefault(
                 keepRefToGeneratedCode, klass._CHEETAH_keepRefToGeneratedCode)
             if boolTypeAvailable:         
-                vt(cacheCompilationResults, 'cacheCompilationResults', [I,B], 'boolean')
+                vt(cacheCompilationResults, 'cacheCompilationResults', [I, B], 'boolean')
         
-            vt(moduleName, 'moduleName', [N,S], 'string or None')
+            vt(moduleName, 'moduleName', [N, S], 'string or None')
             __orig_file__ = None
             if not moduleName:
                 if file and type(file) in StringTypes:
@@ -637,12 +636,12 @@ class Template(Servlet):
         
             className = valOrDefault(
                 className, klass._CHEETAH_defaultClassNameForTemplates)
-            vt(className, 'className', [N,S], 'string or None')
+            vt(className, 'className', [N, S], 'string or None')
             className = className or moduleName
 
             mainMethodName = valOrDefault(
                 mainMethodName, klass._CHEETAH_defaultMainMethodNameForTemplates)
-            vt(mainMethodName, 'mainMethodName', [N,S], 'string or None')
+            vt(mainMethodName, 'mainMethodName', [N, S], 'string or None')
 
             moduleGlobals = valOrDefault(
                 moduleGlobals, klass._CHEETAH_defaultModuleGlobalsForTemplates)
@@ -650,11 +649,11 @@ class Template(Servlet):
             cacheModuleFilesForTracebacks = valOrDefault(
                 cacheModuleFilesForTracebacks, klass._CHEETAH_cacheModuleFilesForTracebacks)
             if boolTypeAvailable:
-                vt(cacheModuleFilesForTracebacks, 'cacheModuleFilesForTracebacks', [I,B], 'boolean')
+                vt(cacheModuleFilesForTracebacks, 'cacheModuleFilesForTracebacks', [I, B], 'boolean')
             
             cacheDirForModuleFiles = valOrDefault(
                 cacheDirForModuleFiles, klass._CHEETAH_cacheDirForModuleFiles)
-            vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N,S], 'string or None')
+            vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N, S], 'string or None')
 
         except TypeError as reason:
             raise TypeError(reason)
@@ -889,7 +888,7 @@ class Template(Servlet):
             (settings.placeholderToken,
              settings.directiveToken) = normalizeTokens(settings.tokens)
             
-        if (not getattr(settings,'compilerSettings', None)
+        if (not getattr(settings, 'compilerSettings', None)
             and not getattr(settings, 'placeholderToken', None) ):
             
             raise TypeError(
@@ -978,7 +977,7 @@ class Template(Servlet):
             or concreteTemplateClass.__str__ is object.__str__):
             
             mainMethNameAttr = '_mainCheetahMethod_for_'+concreteTemplateClass.__name__
-            mainMethName = getattr(concreteTemplateClass,mainMethNameAttr, None)
+            mainMethName = getattr(concreteTemplateClass, mainMethNameAttr, None)
             if mainMethName:
                 def __str__(self): return getattr(self, mainMethName)()
             elif (hasattr(concreteTemplateClass, 'respond')
@@ -987,7 +986,7 @@ class Template(Servlet):
             else:
                 def __str__(self):
                     if hasattr(self, mainMethNameAttr):
-                        return getattr(self,mainMethNameAttr)()
+                        return getattr(self, mainMethNameAttr)()
                     elif hasattr(self, 'respond'):
                         return self.respond()
                     else:
@@ -1133,14 +1132,14 @@ class Template(Servlet):
         vt = VerifyType.VerifyType
         vtc = VerifyType.VerifyTypeClass
         try:
-            vt(source, 'source', [N,S,U], 'string or None')
-            vt(file, 'file', [N,S,U,F], 'string, file open for reading, or None')
-            vtc(filter, 'filter', [S,C,type], 'string or class', 
+            vt(source, 'source', [N, S, U], 'string or None')
+            vt(file, 'file', [N, S, U, F], 'string, file open for reading, or None')
+            vtc(filter, 'filter', [S, C, type], 'string or class', 
                 Filters.Filter,
                 '(if class, must be subclass of Cheetah.Filters.Filter)')
-            vt(filtersLib, 'filtersLib', [S,M], 'string or module',
+            vt(filtersLib, 'filtersLib', [S, M], 'string or module',
                 '(if module, must contain subclasses of Cheetah.Filters.Filter)')
-            vtc(errorCatcher, 'errorCatcher', [N,S,C,type], 'string, class or None',
+            vtc(errorCatcher, 'errorCatcher', [N, S, C, type], 'string, class or None',
                ErrorCatchers.ErrorCatcher,
                '(if class, must be subclass of Cheetah.ErrorCatchers.ErrorCatcher)')
             if compilerSettings is not Unspecified:
@@ -1297,7 +1296,7 @@ class Template(Servlet):
         """
         
         try:
-            return valueFromSearchList(self.searchList(), varName.replace('$',''), autoCall)
+            return valueFromSearchList(self.searchList(), varName.replace('$', ''), autoCall)
         except NotFound:
             if default is not Unspecified:
                 return default
@@ -1308,7 +1307,7 @@ class Template(Servlet):
         """Test if a variable name exists in the searchList.
         """
         try:
-            valueFromSearchList(self.searchList(), varName.replace('$',''), autoCall)
+            valueFromSearchList(self.searchList(), varName.replace('$', ''), autoCall)
             return True
         except NotFound:
             return False
@@ -1357,7 +1356,7 @@ class Template(Servlet):
         various protocols, as PHP allows with its 'URL fopen wrapper'
         """
         
-        fp = open(path,'r')
+        fp = open(path, 'r')
         output = fp.read()
         fp.close()
         return output
@@ -1435,7 +1434,7 @@ class Template(Servlet):
         if errorCatcher:
             if type(errorCatcher) in StringTypes:
                 errorCatcherClass = getattr(ErrorCatchers, errorCatcher)
-            elif type(errorCatcher) == ClassType:
+            elif isinstance(errorCatcher, ClassType):
                 errorCatcherClass = errorCatcher
 
             self._CHEETAH__errorCatcher = ec = errorCatcherClass(self)
@@ -1510,7 +1509,7 @@ class Template(Servlet):
                 # Template class to be used for compilation so compilerSettings
                 # can be changed.
                 compiler = self._getTemplateAPIClassForIncludeDirectiveCompilation(source, file)
-                nestedTemplateClass = compiler.compile(source=source,file=file)
+                nestedTemplateClass = compiler.compile(source=source, file=file)
                 nestedTemplate = nestedTemplateClass(_preBuiltSearchList=self.searchList(),
                                                      _globalSetVars=self._CHEETAH__globalSetVars)
                 # Set the inner template filters to the initial filter of the
@@ -1752,8 +1751,8 @@ class Template(Servlet):
             raise TypeError("arg 'src' invalid")
         sources = source + 's'
         converters = {
-            ''     : _Converter('string', None, default,      default ),
-            'int'  : _Converter('int',     int, defaultInt,   badInt  ),
+            '': _Converter('string', None, default,      default ),
+            'int': _Converter('int',     int, defaultInt,   badInt  ),
             'float': _Converter('float', float, defaultFloat, badFloat),  }
         #pprint.pprint(locals());  return {}
         dic = {} # Destination.
@@ -1795,16 +1794,16 @@ def genParserErrorFromPythonException(source, file, generatedPyCode, exception):
     lines = generatedPyCode.splitlines()
     
     prevLines = []                  # (i, content)
-    for i in range(1,4):
+    for i in range(1, 4):
         if pyLineno-i <=0:
             break
-        prevLines.append( (pyLineno+1-i,lines[pyLineno-i]) )
+        prevLines.append( (pyLineno+1-i, lines[pyLineno-i]) )
     
     nextLines = []                  # (i, content)
-    for i in range(1,4):
+    for i in range(1, 4):
         if not pyLineno+i < len(lines):
             break
-        nextLines.append( (pyLineno+i,lines[pyLineno+i]) )
+        nextLines.append( (pyLineno+i, lines[pyLineno+i]) )
     nextLines.reverse()
     report = 'Line|Python Code\n'
     report += '----|-------------------------------------------------------------\n'
@@ -1851,7 +1850,7 @@ def genParserErrorFromPythonException(source, file, generatedPyCode, exception):
     
     message = '\n'.join(message)
     reader = SourceReader(source, filename=filename)
-    return ParseError(reader, message, lineno=lineno,col=col)
+    return ParseError(reader, message, lineno=lineno, col=col)
     
 
 # vim: shiftwidth=4 tabstop=4 expandtab

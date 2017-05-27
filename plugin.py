@@ -37,7 +37,7 @@ class EncodeUnicode(Filter):
 
         encoding = kw.get('encoding', 'utf8')
 
-        if type(val) == str:
+        if isinstance(val, str):
             try:
                 val = val.decode('utf8')
             except:
@@ -45,7 +45,7 @@ class EncodeUnicode(Filter):
                     val = val.decode('macroman')
                 else:
                     val = val.decode('cp1252')
-        elif type(val) != str:
+        elif not isinstance(val, str):
             val = str(val)
         return val.encode(encoding)
 
@@ -112,7 +112,7 @@ class Plugin(object):
                 if not '://' in anchor:
                     anchor = os.path.normpath(anchor)
 
-                if type(files[0]) == str:
+                if isinstance(files[0], str):
                     filenames = files
                 else:
                     filenames = [x.name for x in files]

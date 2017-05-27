@@ -131,7 +131,7 @@ class Strip(Filter):
     	s = super(Strip, self).filter(val, **kw)
         result = []
         start = 0   # The current line will be s[start:end].
-        while 1: # Loop through each line.
+        while True: # Loop through each line.
             end = s.find('\n', start)  # Find next newline.
             if end == -1:  # If no more newlines.
                 break

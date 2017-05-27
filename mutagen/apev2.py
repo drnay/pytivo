@@ -199,8 +199,7 @@ class APEv2(DictMixin, Metadata):
 
     def pprint(self):
         """Return tag key=value pairs in a human-readable format."""
-        items = list(self.items())
-        items.sort()
+        items = sorted(list(self.items()))
         return "\n".join(["%s=%s" % (k, v.pprint()) for k, v in items])
 
     def load(self, filename):

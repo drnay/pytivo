@@ -149,7 +149,7 @@ def from_moov(full_path):
     else:
         isTVShow = 'tvsh' in mp4meta
     for key, value in list(mp4meta.items()):
-        if type(value) == list:
+        if isinstance(value, list):
             value = value[0]
         if key in keys:
             metadata[keys[key]] = value
@@ -174,7 +174,7 @@ def from_moov(full_path):
             tves = '00'
             if 'tves' in mp4meta:
                 tvesValue = mp4meta['tves']
-                if type(tvesValue) == list:
+                if isinstance(tvesValue, list):
                     tvesValue = tvesValue[0]
                 tves = str(tvesValue)
                 if len(tves) < 2:
@@ -759,7 +759,7 @@ def from_tivo(full_path):
     return metadata
 
 def force_utf8(text):
-    if type(text) == str:
+    if isinstance(text, str):
         try:
             text = text.decode('utf8')
         except:
@@ -772,7 +772,7 @@ def force_utf8(text):
 def dump(output, metadata):
     for key in metadata:
         value = metadata[key]
-        if type(value) == list:
+        if isinstance(value, list):
             for item in value:
                 output.write('%s: %s\n' % (key, item.encode('utf-8')))
         else:

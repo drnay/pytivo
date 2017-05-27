@@ -188,9 +188,10 @@
          # Check arguments
          if size <= 0:
 -            raise ValueError, size
-+            raise ValueError(size)
-         elif type(size) is not type(0):
+-        elif type(size) is not type(0):
 -            raise TypeError, size
++            raise ValueError(size)
++        elif not isinstance(size, type(0)):
 +            raise TypeError(size)
          object.__init__(self)
          self.__heap = []
@@ -296,15 +297,26 @@
          assert(mp4meta)
      except:
          mp4_cache[full_path] = {}
-@@ -148,7 +148,7 @@
+@@ -148,8 +148,8 @@
          isTVShow = (mp4meta['stik'] == mutagen.mp4.MediaKind.TV_SHOW)
      else:
          isTVShow = 'tvsh' in mp4meta
 -    for key, value in mp4meta.items():
+-        if type(value) == list:
 +    for key, value in list(mp4meta.items()):
-         if type(value) == list:
++        if isinstance(value, list):
              value = value[0]
          if key in keys:
+             metadata[keys[key]] = value
+@@ -174,7 +174,7 @@
+             tves = '00'
+             if 'tves' in mp4meta:
+                 tvesValue = mp4meta['tves']
+-                if type(tvesValue) == list:
++                if isinstance(tvesValue, list):
+                     tvesValue = tvesValue[0]
+                 tves = str(tvesValue)
+                 if len(tves) < 2:
 @@ -259,7 +259,7 @@
              try:
                  if tag in rawmeta:
@@ -377,6 +389,24 @@
          chunk_size, data_size, id, enc = struct.unpack('>LLHH',
              rawdata[count:count + 12])
          count += 12
+@@ -759,7 +759,7 @@
+     return metadata
+ 
+ def force_utf8(text):
+-    if type(text) == str:
++    if isinstance(text, str):
+         try:
+             text = text.decode('utf8')
+         except:
+@@ -772,7 +772,7 @@
+ def dump(output, metadata):
+     for key in metadata:
+         value = metadata[key]
+-        if type(value) == list:
++        if isinstance(value, list):
+             for item in value:
+                 output.write('%s: %s\n' % (key, item.encode('utf-8')))
+         else:
 --- pytivo/plugin.py	(original)
 +++ pytivo/plugin.py	(refactored)
 @@ -5,17 +5,17 @@
@@ -413,12 +443,21 @@
          return Error
  
  class EncodeUnicode(Filter):
+@@ -37,7 +37,7 @@
+ 
+         encoding = kw.get('encoding', 'utf8')
+ 
+-        if type(val) == str:
++        if isinstance(val, str):
+             try:
+                 val = val.decode('utf8')
+             except:
 @@ -45,7 +45,7 @@
                      val = val.decode('macroman')
                  else:
                      val = val.decode('cp1252')
 -        elif type(val) != unicode:
-+        elif type(val) != str:
++        elif not isinstance(val, str):
              val = str(val)
          return val.encode(encoding)
  
@@ -431,6 +470,15 @@
  
      def get_local_base_path(self, handler, query):
          return os.path.normpath(handler.container['path'])
+@@ -112,7 +112,7 @@
+                 if not '://' in anchor:
+                     anchor = os.path.normpath(anchor)
+ 
+-                if type(files[0]) == str:
++                if isinstance(files[0], str):
+                     filenames = files
+                 else:
+                     filenames = [x.name for x in files]
 @@ -147,7 +147,7 @@
              def __init__(self, name, isdir):
                  self.name = name
@@ -694,6 +742,272 @@
  import copy
  
  from Cheetah.Version import Version, VersionTuple
+@@ -36,8 +36,8 @@
+ from Cheetah import ErrorCatchers
+ from Cheetah import NameMapper
+ from Cheetah.Parser import Parser, ParseError, specialVarRE, \
+-     STATIC_CACHE, REFRESH_CACHE, SET_LOCAL, SET_GLOBAL,SET_MODULE, \
+-     unicodeDirectiveRE, encodingDirectiveRE,escapedNewlineRE
++     STATIC_CACHE, REFRESH_CACHE, SET_LOCAL, SET_GLOBAL, SET_MODULE, \
++     unicodeDirectiveRE, encodingDirectiveRE, escapedNewlineRE
+ 
+ from Cheetah.NameMapper import NotFound, valueForName, valueFromSearchList, valueFromFrameOrSearchList
+ VFFSL=valueFromFrameOrSearchList
+@@ -59,35 +59,35 @@
+     'useAutocalling': True, # detect and call callable()'s, requires NameMapper
+     'useStackFrames': True, # use NameMapper.valueFromFrameOrSearchList
+     # rather than NameMapper.valueFromSearchList
+-    'useErrorCatcher':False,
+-    'alwaysFilterNone':True, # filter out None, before the filter is called
+-    'useFilters':True, # use str instead if =False
+-    'includeRawExprInFilterArgs':True,
++    'useErrorCatcher': False,
++    'alwaysFilterNone': True, # filter out None, before the filter is called
++    'useFilters': True, # use str instead if =False
++    'includeRawExprInFilterArgs': True,
+     
+     #'lookForTransactionAttr':False,
+-    'autoAssignDummyTransactionToSelf':False,
+-    'useKWsDictArgForPassingTrans':True,
++    'autoAssignDummyTransactionToSelf': False,
++    'useKWsDictArgForPassingTrans': True,
+     
+     ## controlling the aesthetic appearance / behaviour of generated code    
+     'commentOffset': 1,
+-    'outputRowColComments':True,
++    'outputRowColComments': True,
+     # should #block's be wrapped in a comment in the template's output
+     'includeBlockMarkers': False,   
+-    'blockMarkerStart':('\n<!-- START BLOCK: ',' -->\n'),
+-    'blockMarkerEnd':('\n<!-- END BLOCK: ',' -->\n'),           
+-    'defDocStrMsg':'Autogenerated by CHEETAH: The Python-Powered Template Engine',
++    'blockMarkerStart': ('\n<!-- START BLOCK: ', ' -->\n'),
++    'blockMarkerEnd': ('\n<!-- END BLOCK: ', ' -->\n'),           
++    'defDocStrMsg': 'Autogenerated by CHEETAH: The Python-Powered Template Engine',
+     'setup__str__method': False, 
+-    'mainMethodName':'respond',
+-    'mainMethodNameForSubclasses':'writeBody',
++    'mainMethodName': 'respond',
++    'mainMethodNameForSubclasses': 'writeBody',
+     'indentationStep': ' '*4,
+     'initialMethIndentLevel': 2,
+-    'monitorSrcFile':False,
++    'monitorSrcFile': False,
+     'outputMethodsBeforeAttributes': True,
+     'addTimestampsToCompilerOutput': True,
+ 
+     ## customizing the #extends directive
+-    'autoImportForExtendsDirective':True,
+-    'handlerForExtendsDirective':None, # baseClassName = handler(compiler, baseClassName)
++    'autoImportForExtendsDirective': True,
++    'handlerForExtendsDirective': None, # baseClassName = handler(compiler, baseClassName)
+                                       # a callback hook for customizing the
+                                       # #extends directive.  It can manipulate
+                                       # the compiler's state if needed.
+@@ -96,39 +96,39 @@
+ 
+     # input filtering/restriction
+     # use lower case keys here!!
+-    'disabledDirectives':[], # list of directive keys, without the start token
+-    'enabledDirectives':[], # list of directive keys, without the start token
+-
+-    'disabledDirectiveHooks':[], # callable(parser, directiveKey)
+-    'preparseDirectiveHooks':[], # callable(parser, directiveKey)
+-    'postparseDirectiveHooks':[], # callable(parser, directiveKey)
+-    'preparsePlaceholderHooks':[], # callable(parser)
+-    'postparsePlaceholderHooks':[], # callable(parser)
++    'disabledDirectives': [], # list of directive keys, without the start token
++    'enabledDirectives': [], # list of directive keys, without the start token
++
++    'disabledDirectiveHooks': [], # callable(parser, directiveKey)
++    'preparseDirectiveHooks': [], # callable(parser, directiveKey)
++    'postparseDirectiveHooks': [], # callable(parser, directiveKey)
++    'preparsePlaceholderHooks': [], # callable(parser)
++    'postparsePlaceholderHooks': [], # callable(parser)
+     # the above hooks don't need to return anything
+ 
+-    'expressionFilterHooks':[], # callable(parser, expr, exprType, rawExpr=None, startPos=None)
++    'expressionFilterHooks': [], # callable(parser, expr, exprType, rawExpr=None, startPos=None)
+     # exprType is the name of the directive, 'psp', or 'placeholder'. all
+     # lowercase.  The filters *must* return the expr or raise an exception.
+     # They can modify the expr if needed.
+ 
+-    'templateMetaclass':None, # strictly optional. Only works with new-style baseclasses
+-
+-
+-    'i18NFunctionName':'self.i18n',
++    'templateMetaclass': None, # strictly optional. Only works with new-style baseclasses
++
++
++    'i18NFunctionName': 'self.i18n',
+     
+     ## These are used in the parser, but I've put them here for the time being to
+     ## facilitate separating the parser and compiler:    
+-    'cheetahVarStartToken':'$',
+-    'commentStartToken':'##',
+-    'multiLineCommentStartToken':'#*',
+-    'multiLineCommentEndToken':'*#',
+-    'gobbleWhitespaceAroundMultiLineComments':True,
+-    'directiveStartToken':'#',
+-    'directiveEndToken':'#',
+-    'allowWhitespaceAfterDirectiveStartToken':False,    
+-    'PSPStartToken':'<%',
+-    'PSPEndToken':'%>',
+-    'EOLSlurpToken':'#',
++    'cheetahVarStartToken': '$',
++    'commentStartToken': '##',
++    'multiLineCommentStartToken': '#*',
++    'multiLineCommentEndToken': '*#',
++    'gobbleWhitespaceAroundMultiLineComments': True,
++    'directiveStartToken': '#',
++    'directiveEndToken': '#',
++    'allowWhitespaceAfterDirectiveStartToken': False,    
++    'PSPStartToken': '<%',
++    'PSPEndToken': '%>',
++    'EOLSlurpToken': '#',
+     'gettextTokens': ["_", "N_", "ngettext"],
+     'allowExpressionsInExtendsDirective': False, # the default restricts it to
+                                         # accepting dotted names    
+@@ -419,13 +419,13 @@
+         
+         ind = self._indent*2        
+         docStr = (ind + '"""\n' + ind +
+-                  ('\n' + ind).join([ln.replace('"""',"'''") for ln in self._docStringLines]) +
++                  ('\n' + ind).join([ln.replace('"""', "'''") for ln in self._docStringLines]) +
+                   '\n' + ind + '"""\n')
+         return  docStr
+ 
+     ## methods for adding code
+     def addMethDocString(self, line):
+-        self._docStringLines.append(line.replace('%','%%'))
++        self._docStringLines.append(line.replace('%', '%%'))
+        
+     def addChunk(self, chunk):
+         self.commitStrConst()
+@@ -458,7 +458,7 @@
+                 self.addChunk("if _v is not None: write(str(_v))")
+         else:
+             if self.setting('useFilters'):
+-                self.addChunk("write(_filter(%s%s))"%(chunk,filterArgs))
++                self.addChunk("write(_filter(%s%s))"%(chunk, filterArgs))
+             else:
+                 self.addChunk("write(str(%s))"%chunk)
+ 
+@@ -493,7 +493,7 @@
+             if not strConst:
+                 return
+             else:
+-                reprstr = repr(strConst).replace('\\012','\n')
++                reprstr = repr(strConst).replace('\\012', '\n')
+                 i = 0
+                 out = []
+                 if reprstr.startswith('u'):
+@@ -585,7 +585,7 @@
+             splitPos2 = LVALUE.find('[')
+             if splitPos1 > 0 and splitPos2==-1:
+                 splitPos = splitPos1
+-            elif splitPos1 > 0 and splitPos1 < max(splitPos2,0):
++            elif splitPos1 > 0 and splitPos1 < max(splitPos2, 0):
+                 splitPos = splitPos1
+             else:
+                 splitPos = splitPos2
+@@ -619,7 +619,7 @@
+     def addRepeat(self, expr, lineCol=None):
+         #the _repeatCount stuff here allows nesting of #repeat directives        
+         self._repeatCount = getattr(self, "_repeatCount", -1) + 1
+-        self.addFor('for __i%s in range(%s)' % (self._repeatCount,expr), lineCol=lineCol)
++        self.addFor('for __i%s in range(%s)' % (self._repeatCount, expr), lineCol=lineCol)
+ 
+     def addIndentingDirective(self, expr, lineCol=None):
+         if expr and not expr[-1] == ':':
+@@ -663,7 +663,7 @@
+         self.dedent()
+ 
+     def addElse(self, expr, dedent=True, lineCol=None):
+-        expr = re.sub(r'else[ \f\t]+if','elif', expr)
++        expr = re.sub(r'else[ \f\t]+if', 'elif', expr)
+         self.addReIndentingDirective(expr, dedent=dedent, lineCol=lineCol)
+ 
+     def addElif(self, expr, dedent=True, lineCol=None):
+@@ -700,7 +700,7 @@
+     def addYield(self, expr):
+         assert not self._hasReturnStatement
+         self._isGenerator = True
+-        if expr.replace('yield','').strip():
++        if expr.replace('yield', '').strip():
+             self.addChunk(expr)
+         else:
+             self.addChunk('if _dummyTrans:')
+@@ -767,9 +767,9 @@
+         # @@TR: we should add some runtime logging to this
+         
+         ID = self.nextCacheID()
+-        interval = cacheInfo.get('interval',None)
+-        test = cacheInfo.get('test',None)
+-        customID = cacheInfo.get('id',None)
++        interval = cacheInfo.get('interval', None)
++        test = cacheInfo.get('test', None)
++        customID = cacheInfo.get('id', None)
+         if customID:
+             ID = customID
+         varyBy = cacheInfo.get('varyBy', repr(ID))
+@@ -934,7 +934,7 @@
+         captureDetails.assignTo = assignTo
+         captureDetails.lineCol = lineCol
+         
+-        self._captureRegionsStack.append((ID,captureDetails)) # attrib of current methodCompiler
++        self._captureRegionsStack.append((ID, captureDetails)) # attrib of current methodCompiler
+         self.addChunk('## START CAPTURE REGION: '+ID
+                       +' '+assignTo
+                       +' at line %s, col %s'%lineCol + ' in the source.')
+@@ -1013,11 +1013,11 @@
+ 
+     def _setupState(self):
+         MethodCompiler._setupState(self)
+-        self._argStringList = [ ("self",None) ]
++        self._argStringList = [ ("self", None) ]
+         self._streamingEnabled = True
+ 
+     def _useKWsDictArgForPassingTrans(self):
+-        alreadyHasTransArg = [argname for argname,defval in self._argStringList
++        alreadyHasTransArg = [argname for argname, defval in self._argStringList
+                               if argname=='trans']
+         return (self.methodName()!='respond'
+                 and not alreadyHasTransArg
+@@ -1034,12 +1034,12 @@
+         if self._streamingEnabled:
+             kwargsName = None
+             positionalArgsListName = None
+-            for argname,defval in self._argStringList:
++            for argname, defval in self._argStringList:
+                 if argname.strip().startswith('**'):
+-                    kwargsName = argname.strip().replace('**','')
++                    kwargsName = argname.strip().replace('**', '')
+                     break
+                 elif argname.strip().startswith('*'):
+-                    positionalArgsListName = argname.strip().replace('*','')
++                    positionalArgsListName = argname.strip().replace('*', '')
+                     
+             if not kwargsName and self._useKWsDictArgForPassingTrans():
+                 kwargsName = 'KWS'
+@@ -1114,7 +1114,7 @@
+         self.addChunk('return _dummyTrans and trans.response().getvalue() or ""')
+ 
+     def addMethArg(self, name, defVal=None):
+-        self._argStringList.append( (name,defVal) )
++        self._argStringList.append( (name, defVal) )
+         
+     def methodSignature(self):
+         argStringChunks = []
+@@ -1144,7 +1144,7 @@
+     for k,v in KWs.items():
+         if k in allowedKWs: cheetahKWArgs[k] = v
+     self._initCheetahInstance(**cheetahKWArgs)
+-""".replace('\n','\n'+' '*8)
++""".replace('\n', '\n'+' '*8)
+ 
+ class ClassCompiler(GenUtils):
+     methodCompilerClass = AutoMethodCompiler
 @@ -1181,14 +1181,14 @@
          from the methods of this class!!! or you will be assigning to attributes
          of this object instead."""
@@ -711,6 +1025,19 @@
  
      def _setupState(self):
          self._classDef = None
+@@ -1343,9 +1343,9 @@
+         self._decoratorForNextMethod = decoratorExpr
+ 
+     def addClassDocString(self, line):
+-        self._classDocStringLines.append( line.replace('%','%%')) 
+-
+-    def addChunkToInit(self,chunk):
++        self._classDocStringLines.append( line.replace('%', '%%')) 
++
++    def addChunkToInit(self, chunk):
+         self._initMethChunks.append(chunk)
+ 
+     def addAttribute(self, attribExpr):
 @@ -1374,7 +1374,7 @@
              'super(%(className)s, self).%(methodName)s(%(argString)s)'%locals())
  
@@ -764,15 +1091,48 @@
  
      def _initializeSettings(self):
          self.updateSettings(copy.deepcopy(DEFAULT_COMPILER_SETTINGS))
-@@ -1972,7 +1972,7 @@
+@@ -1844,7 +1844,7 @@
+         self._getActiveClassCompiler().addAttribute(attribName + ' =' + expr)
+         
+     def addComment(self, comm):
+-        if re.match(r'#+$',comm):      # skip bar comments
++        if re.match(r'#+$', comm):      # skip bar comments
+             return
+         
+         specialVarMatch = specialVarRE.match(comm)
+@@ -1931,14 +1931,14 @@
+     templateAPIClass._addCheetahPlumbingCodeToClass(%(mainClassName)s)
+ 
+ %(footer)s
+-""" %   {'header':self.moduleHeader(),
+-         'docstring':self.moduleDocstring(),
+-         'specialVars':self.specialVars(),
+-         'imports':self.importStatements(),
+-         'constants':self.moduleConstants(),
+-         'classes':self.classDefs(),
+-         'footer':self.moduleFooter(),
+-         'mainClassName':self._mainClassName,
++""" %   {'header': self.moduleHeader(),
++         'docstring': self.moduleDocstring(),
++         'specialVars': self.specialVars(),
++         'imports': self.importStatements(),
++         'constants': self.moduleConstants(),
++         'classes': self.classDefs(),
++         'footer': self.moduleFooter(),
++         'mainClassName': self._mainClassName,
+          }
+        
+         self._moduleDef = moduleDef
+@@ -1972,8 +1972,7 @@
      def specialVars(self):
          chunks = []
          theVars = self._specialVars
 -        keys = theVars.keys()
-+        keys = list(theVars.keys())
-         keys.sort()
+-        keys.sort()
++        keys = sorted(list(theVars.keys()))
          for key in keys:
              chunks.append(key + ' = ' + repr(theVars[key])  )
+         return '\n'.join(chunks)
 --- pytivo/Cheetah/Filters.py	(original)
 +++ pytivo/Cheetah/Filters.py	(refactored)
 @@ -41,7 +41,7 @@
@@ -816,6 +1176,15 @@
                      v = entities[k]
                  else:
                      v = "&#%s;" % ord(k)
+@@ -131,7 +131,7 @@
+     	s = super(Strip, self).filter(val, **kw)
+         result = []
+         start = 0   # The current line will be s[start:end].
+-        while 1: # Loop through each line.
++        while True: # Loop through each line.
+             end = s.find('\n', start)  # Find next newline.
+             if end == -1:  # If no more newlines.
+                 break
 @@ -161,15 +161,15 @@
  def test():
      s1 = "abc <=> &"
@@ -863,7 +1232,7 @@
  def hasKey(obj, key):
      """Determine if 'obj' has 'key' """
 -    if hasattr(obj,'has_key') and obj.has_key(key):
-+    if hasattr(obj,'has_key') and key in obj:
++    if hasattr(obj, 'has_key') and key in obj:
          return True
      elif hasattr(obj, key):
          return True
@@ -922,7 +1291,7 @@
 -    print valueForName(vars(), 'a.classVar')
 -    print valueForName(vars(), 'a.dic.func', executeCallables=True)
 -    print valueForName(vars(), 'a.method2.item1', executeCallables=True)
-+    print(valueForKey(a.dic,'subDict'))
++    print(valueForKey(a.dic, 'subDict'))
 +    print(valueForName(a, 'dic.item'))
 +    print(valueForName(vars(), 'b'))
 +    print(valueForName(__builtins__, 'dir')())
@@ -942,7 +1311,13 @@
  
  # re tools
  _regexCache = {}
-@@ -52,8 +53,8 @@
+@@ -47,13 +48,13 @@
+     
+     """Return a txt with all special regular expressions chars escaped."""
+     
+-    return escapeRE.sub(r'\\\1' , txt)
++    return escapeRE.sub(r'\\\1', txt)
+ 
  def group(*choices): return '(' + '|'.join(choices) + ')'
  def nongroup(*choices): return '(?:' + '|'.join(choices) + ')'
  def namedGroup(name, *choices): return '(P:<' + name +'>' + '|'.join(choices) + ')'
@@ -953,7 +1328,39 @@
  
  ##################################################
  ## CONSTANTS & GLOBALS ##
-@@ -135,7 +136,7 @@
+@@ -77,22 +78,22 @@
+ #operators
+ powerOp = '**'
+ unaryArithOps = ('+', '-', '~')
+-binaryArithOps = ('+', '-', '/', '//','%')
+-shiftOps = ('>>','<<')
+-bitwiseOps = ('&','|','^')
++binaryArithOps = ('+', '-', '/', '//', '%')
++shiftOps = ('>>', '<<')
++bitwiseOps = ('&', '|', '^')
+ assignOp = '='
+-augAssignOps = ('+=','-=','/=','*=', '**=','^=','%=',
+-          '>>=','<<=','&=','|=', )
++augAssignOps = ('+=', '-=', '/=', '*=', '**=', '^=', '%=',
++          '>>=', '<<=', '&=', '|=', )
+ assignmentOps = (assignOp,) + augAssignOps
+ 
+-compOps = ('<','>','==','!=','<=','>=', '<>', 'is', 'in',)
+-booleanOps = ('and','or','not')
++compOps = ('<', '>', '==', '!=', '<=', '>=', '<>', 'is', 'in',)
++booleanOps = ('and', 'or', 'not')
+ operators = (powerOp,) + unaryArithOps + binaryArithOps \
+             + shiftOps + bitwiseOps + assignmentOps \
+             + compOps + booleanOps
+ 
+-delimeters = ('(',')','{','}','[',']',
+-              ',','.',':',';','=','`') + augAssignOps
++delimeters = ('(', ')', '{', '}', '[', ']',
++              ',', '.', ':', ';', '=', '`') + augAssignOps
+ 
+ 
+ keywords = ('and',       'del',       'for',       'is',        'raise',
+@@ -135,13 +136,13 @@
      end = escapeRegexChars(end)
      return re.compile(r'(?:' + start + r').*?' + r'(?:' + end + r')', re.DOTALL)
  
@@ -962,6 +1369,54 @@
      tripleQuotedStringREs[start] = makeTripleQuoteRe(start, end)
  
  WS = r'[ \f\t]*'  
+ EOL = r'\r\n|\n|\r'
+ EOLZ = EOL + r'|\Z'
+-escCharLookBehind = nongroup(r'(?<=\A)',r'(?<!\\)')
++escCharLookBehind = nongroup(r'(?<=\A)', r'(?<!\\)')
+ nameCharLookAhead = r'(?=[A-Za-z_])'
+ identRE=re.compile(r'[a-zA-Z_][a-zA-Z_0-9]*')
+ EOLre=re.compile(r'(?:\r\n|\r|\n)')
+@@ -158,8 +159,8 @@
+ 
+ directiveNamesAndParsers = {
+     # importing and inheritance
+-    'import':None,
+-    'from':None,
++    'import': None,
++    'from': None,
+     'extends': 'eatExtends',
+     'implements': 'eatImplements',
+     'super': 'eatSuper',
+@@ -235,7 +236,7 @@
+     'call': None,               # has short-form
+     'capture': None,            # has short-form
+     'filter': None,
+-    'errorCatcher':None,            
++    'errorCatcher': None,            
+     'while': None,              # has short-form
+     'for': None,                # has short-form
+     'if': None,                 # has short-form
+@@ -279,16 +280,16 @@
+         ## get the surrounding lines
+         lines = stream.splitlines()
+         prevLines = []                  # (rowNum, content)
+-        for i in range(1,4):
++        for i in range(1, 4):
+             if row-1-i <=0:
+                 break
+-            prevLines.append( (row-i,lines[row-1-i]) )
++            prevLines.append( (row-i, lines[row-1-i]) )
+ 
+         nextLines = []                  # (rowNum, content)
+-        for i in range(1,4):
++        for i in range(1, 4):
+             if not row-1+i < len(lines):
+                 break
+-            nextLines.append( (row+i,lines[row-1+i]) )
++            nextLines.append( (row+i, lines[row-1+i]) )
+         nextLines.reverse()
+         
+         ## print the main message
 @@ -337,7 +338,7 @@
          self.argNames.append( name )
          self.defVals.append( None )
@@ -971,6 +1426,15 @@
          self.i += 1
  
      def addToDefVal(self, token):
+@@ -349,7 +350,7 @@
+     def merge(self):
+         defVals = self.defVals
+         for i in range(len(defVals)):
+-            if type(defVals[i]) == StringType:
++            if isinstance(defVals[i], StringType):
+                 defVals[i] = defVals[i].strip()
+                 
+         return map(None, [i.strip() for i in self.argNames], defVals)
 @@ -665,7 +666,7 @@
  
      def matchDirectiveName(self, directiveNameChars=identchars+'0123456789-@'):
@@ -980,6 +1444,33 @@
          name = ''
          match = None
  
+@@ -906,7 +907,7 @@
+         argStringBits = ['(']
+         addBit = argStringBits.append
+ 
+-        while 1:
++        while True:
+             if self.atEnd():
+                 open = enclosures[-1][0]
+                 close = closurePairsRev[open]
+@@ -951,7 +952,7 @@
+             else:
+                 beforeTokenPos = self.pos()
+                 token = self.getPyToken()
+-                if token in ('{','(','['):
++                if token in ('{', '(', '['):
+                     self.rev()
+                     token = self.getExpression(enclosed=True)
+                 token = self.transformToken(token, beforeTokenPos)
+@@ -991,7 +992,7 @@
+         useNameMapper_orig = self.setting('useNameMapper')
+         self.setSetting('useNameMapper', useNameMapper)
+ 
+-        while 1:
++        while True:
+             if self.atEnd():
+                 raise ParseError(
+                     self, msg="EOF was reached before a matching ')'"+
 @@ -1013,7 +1014,7 @@
                  onDefVal = True
                  self.advance()
@@ -989,6 +1480,35 @@
                  onDefVal = False
                  self.advance()
              elif self.startswith(self.cheetahVarStartToken) and not onDefVal:
+@@ -1029,7 +1030,7 @@
+                 else:
+                     beforeTokenPos = self.pos()
+                     token = self.getPyToken()
+-                    if token in ('{','(','['):
++                    if token in ('{', '(', '['):
+                         self.rev()
+                         token = self.getExpression(enclosed=True)
+                     token = self.transformToken(token, beforeTokenPos)
+@@ -1070,7 +1071,7 @@
+         
+         srcLen = len(self)
+         exprBits = []
+-        while 1:
++        while True:
+             if self.atEnd():
+                 if enclosures:
+                     open = enclosures[-1][0]
+@@ -1282,8 +1283,8 @@
+                 expr = expr[:-1]
+             rawPlaceholder=self[startPos: self.pos()]
+             
+-        expr = self._applyExpressionFilters(expr,'placeholder',
+-                                            rawExpr=rawPlaceholder,startPos=startPos)
++        expr = self._applyExpressionFilters(expr, 'placeholder',
++                                            rawExpr=rawPlaceholder, startPos=startPos)
+         for callback in self.setting('postparsePlaceholderHooks'):
+             callback(parser=self)
+ 
 @@ -1315,7 +1316,7 @@
          """Cleanup to remove any possible reference cycles
          """
@@ -1012,7 +1532,17 @@
                  handler = val
              elif val is None:
                  handler = val
-@@ -1349,13 +1350,13 @@
+@@ -1341,44 +1342,44 @@
+         normalizeHandlerVal = normalizeParserVal
+ 
+         _directiveNamesAndParsers = directiveNamesAndParsers.copy()
+-        customNamesAndParsers = self.setting('directiveNamesAndParsers',{})
++        customNamesAndParsers = self.setting('directiveNamesAndParsers', {})
+         _directiveNamesAndParsers.update(customNamesAndParsers)
+ 
+         _endDirectiveNamesAndHandlers = endDirectiveNamesAndHandlers.copy()
+-        customNamesAndHandlers = self.setting('endDirectiveNamesAndHandlers',{})
++        customNamesAndHandlers = self.setting('endDirectiveNamesAndHandlers', {})
          _endDirectiveNamesAndHandlers.update(customNamesAndHandlers)        
          
          self._directiveNamesAndParsers = {}
@@ -1028,7 +1558,27 @@
              if val in (False, 0):
                  continue
              self._endDirectiveNamesAndHandlers[name] = normalizeHandlerVal(val)
-@@ -1378,7 +1379,7 @@
+         
+-        self._closeableDirectives = ['def','block','closure','defmacro',
++        self._closeableDirectives = ['def', 'block', 'closure', 'defmacro',
+                                      'call',
+                                      'capture',
+                                      'cache',
+                                      'filter',
+-                                     'if','unless',
+-                                     'for','while','repeat',
++                                     'if', 'unless',
++                                     'for', 'while', 'repeat',
+                                      'try',
+                                      ]
+-        for directiveName in self.setting('closeableDirectives',[]):
++        for directiveName in self.setting('closeableDirectives', []):
+             self._closeableDirectives.append(directiveName)
+ 
+ 
+ 
+-        macroDirectives = self.setting('macroDirectives',{})
++        macroDirectives = self.setting('macroDirectives', {})
          macroDirectives['i18n'] = I18n
  
  
@@ -1037,6 +1587,26 @@
              if type(callback) in (ClassType, TypeType):
                  callback = callback(parser=self)
              assert callback                
+@@ -1491,7 +1492,7 @@
+         self.getMultiLineCommentStartToken()
+         endPos = startPos = self.pos()
+         level = 1
+-        while 1:
++        while True:
+             endPos = self.pos()
+             if self.atEnd():
+                 break
+@@ -1558,8 +1559,8 @@
+     del assert raise
+     silent echo    
+     import from'''.split()
+-    _directiveHandlerNames = {'import':'addImportStatement',
+-                              'from':'addImportStatement', }
++    _directiveHandlerNames = {'import': 'addImportStatement',
++                              'from': 'addImportStatement', }
+     def eatDirective(self):
+         directiveName = self.matchDirective()
+         self._filterDisabledDirectives(directiveName)
 @@ -1711,7 +1712,7 @@
          self.getWhiteSpace()
          pos = self.pos()
@@ -1084,15 +1654,75 @@
              raise
  
      def eatAttr(self):
-@@ -2210,7 +2211,7 @@
+@@ -1909,8 +1910,8 @@
+         startPos = self.pos()
+         methodName, rawSignature = self._eatDefOrBlock('block')
+         self._compiler._blockMetaData[methodName] = {
+-            'raw':rawSignature,
+-            'lineCol':self.getRowCol(startPos),
++            'raw': rawSignature,
++            'lineCol': self.getRowCol(startPos),
+             }
+ 
+     def eatClosure(self):
+@@ -1919,7 +1920,7 @@
+         
+     def _eatDefOrBlock(self, directiveName):
+         # filtered 
+-        assert directiveName in ('def','block','closure')
++        assert directiveName in ('def', 'block', 'closure')
+         isLineClearToStartToken = self.isLineClearToStartToken()
+         endOfFirstLinePos = self.findEOL()
+         startPos = self.pos()
+@@ -2210,15 +2211,15 @@
          else:
              argsList=[]
  
 -        assert not self._directiveNamesAndParsers.has_key(macroName)
+-        argsList.insert(0, ('src',None))
+-        argsList.append(('parser','None'))
+-        argsList.append(('macros','None'))
+-        argsList.append(('compilerSettings','None'))
+-        argsList.append(('isShortForm','None'))
+-        argsList.append(('EOLCharsInShortForm','None'))        
+-        argsList.append(('startPos','None'))
+-        argsList.append(('endPos','None'))
 +        assert macroName not in self._directiveNamesAndParsers
-         argsList.insert(0, ('src',None))
-         argsList.append(('parser','None'))
-         argsList.append(('macros','None'))
++        argsList.insert(0, ('src', None))
++        argsList.append(('parser', 'None'))
++        argsList.append(('macros', 'None'))
++        argsList.append(('compilerSettings', 'None'))
++        argsList.append(('isShortForm', 'None'))
++        argsList.append(('EOLCharsInShortForm', 'None'))        
++        argsList.append(('startPos', 'None'))
++        argsList.append(('endPos', 'None'))
+         
+         if self.matchColonForSingleLineShortFormDirective():
+             self.advance() # skip over :
+@@ -2234,8 +2235,8 @@
+ 
+         #print argsList
+         normalizedMacroSrc = ''.join(
+-            ['%def callMacro('+','.join([defv and '%s=%s'%(n,defv) or n
+-                                         for n,defv in argsList])
++            ['%def callMacro('+','.join([defv and '%s=%s'%(n, defv) or n
++                                         for n, defv in argsList])
+              +')\n',
+              macroSrc,
+              '%end def'])
+@@ -2246,9 +2247,9 @@
+         compilerSettings = self.setting('compilerSettingsForDefMacro', default={})
+         searchListForMacros = self.setting('searchListForDefMacro', default=[])
+         searchListForMacros = list(searchListForMacros) # copy to avoid mutation bugs
+-        searchListForMacros.append({'macros':self._macros,
+-                                    'parser':self,
+-                                    'compilerSettings':self.settings(),                                    
++        searchListForMacros.append({'macros': self._macros,
++                                    'parser': self,
++                                    'compilerSettings': self.settings(),                                    
+                                     })
+         
+         templateAPIClass._updateSettingsWithPreprocessTokens(
 @@ -2308,18 +2309,18 @@
          else:
              def getArgs(*pargs, **kws):
@@ -1105,8 +1735,9 @@
 +        assert 'src' not in kwArgs
          kwArgs['src'] = srcBlock
  
-         if type(macro)==new.instancemethod:
+-        if type(macro)==new.instancemethod:
 -            co = macro.im_func.func_code
++        if isinstance(macro, new.instancemethod):
 +            co = macro.__func__.__code__
          elif (hasattr(macro, '__call__')
                and hasattr(macro.__call__, 'im_func')):
@@ -1119,6 +1750,17 @@
          availableKwArgs = inspect.getargs(co)[0]
          
          if 'parser' in availableKwArgs:
+--- pytivo/Cheetah/Servlet.py	(original)
++++ pytivo/Cheetah/Servlet.py	(refactored)
+@@ -117,7 +117,7 @@
+         if self._CHEETAH__isControlledByWebKit:
+             return BaseServlet.serverSidePath(self, path)
+         elif path:
+-            return normpath(abspath(path.replace("\\",'/')))
++            return normpath(abspath(path.replace("\\", '/')))
+         elif hasattr(self, '_filePath') and self._filePath:
+             return normpath(abspath(self._filePath))
+         else:
 --- pytivo/Cheetah/SettingsManager.py	(original)
 +++ pytivo/Cheetah/SettingsManager.py	(refactored)
 @@ -21,7 +21,7 @@
@@ -1139,6 +1781,18 @@
  import imp                 # used by SettingsManager.updateSettingsFromPySrcFile()
  
  try:
+@@ -49,9 +49,9 @@
+ ## CONSTANTS & GLOBALS ##
+ 
+ try:
+-    True,False
++    True, False
+ except NameError:
+-    True, False = (1==1),(1==0)
++    True, False = (1==1), (1==0)
+ 
+ numberRE = re.compile(Number)
+ complexNumberRE = re.compile('[\(]*' +Number + r'[ \t]*\+[ \t]*' + Number + '[\)]*')
 @@ -76,9 +76,9 @@
      elif deepcopy:
          dict1 = copyModule.deepcopy(dict1)
@@ -1146,13 +1800,37 @@
 -    for key,val in dict2.items():
 -        if dict1.has_key(key) and type(val) == types.DictType and \
 -           type(dict1[key]) == types.DictType:
-+    for key,val in list(dict2.items()):
-+        if key in dict1 and type(val) == dict and \
-+           type(dict1[key]) == dict:
++    for key, val in list(dict2.items()):
++        if key in dict1 and isinstance(val, dict) and \
++           isinstance(dict1[key], dict):
              
              dict1[key] = mergeNestedDictionaries(dict1[key], val)
          else:
-@@ -245,7 +245,7 @@
+@@ -145,7 +145,7 @@
+     outputLines = []
+     for line in src.splitlines():
+         if customClassRe.match(line) and \
+-           line.strip().split(':')[0] not in ('else','try', 'except', 'finally'):
++           line.strip().split(':')[0] not in ('else', 'try', 'except', 'finally'):
+             
+             line = customClassRe.sub(
+                 r'\g<indent>class \g<class>(SettingsContainer):', line)
+@@ -228,7 +228,7 @@
+         The default implementation just normalizes the path for the current
+         operating system."""
+         
+-        return os.path.normpath(path.replace("\\",'/'))
++        return os.path.normpath(path.replace("\\", '/'))
+ 
+ 
+     def readSettingsFromContainer(self, container, ignoreUnderscored=True):
+@@ -240,12 +240,12 @@
+         """
+         
+         S = {}
+-        if type(container) == ModuleType:
++        if isinstance(container, ModuleType):
+             attrs = vars(container)
          else:
              attrs = self._getAllAttrsFromContainer(container)
      
@@ -1161,6 +1839,17 @@
              if (ignoreUnderscored and k.startswith('_')) or v is SettingsContainer:
                  continue
              if self._isContainer(v):
+@@ -262,8 +262,8 @@
+         """Check if 'thing' is a Python module or a subclass of
+         SettingsContainer."""
+         
+-        return type(thing) == ModuleType or (
+-            type(thing) == ClassType and issubclass(thing, SettingsContainer)
++        return isinstance(thing, ModuleType) or (
++            isinstance(thing, ClassType) and issubclass(thing, SettingsContainer)
+             ) 
+ 
+     def _getAllAttrsFromContainer(self, container):
 @@ -280,8 +280,8 @@
          attrs.update( container().__dict__ ) 
          
@@ -1172,8 +1861,25 @@
                      attrs[k] = v
          return attrs
  
-@@ -335,7 +335,7 @@
-                        'SettingsContainer':SettingsContainer,
+@@ -297,7 +297,7 @@
+         tmpPath = tempfile.mkstemp('webware_temp')
+         
+         pySrc = translateClassBasedConfigSyntax(open(path).read())
+-        modName = path.replace('.','_').replace('/','_').replace('\\','_')        
++        modName = path.replace('.', '_').replace('/', '_').replace('\\', '_')        
+         open(tmpPath, 'w').write(pySrc)
+         try:
+             fp = open(tmpPath)
+@@ -330,12 +330,12 @@
+         
+         """Return a dictionary of the settings in a Python src string."""
+ 
+-        globalsDict = {'True':1,
+-                       'False':0,
+-                       'SettingsContainer':SettingsContainer,
++        globalsDict = {'True': 1,
++                       'False': 0,
++                       'SettingsContainer': SettingsContainer,
                         }
          newSettings = {'self':self}
 -        exec theString in globalsDict, newSettings
@@ -1181,7 +1887,13 @@
          del newSettings['self'], newSettings['True'], newSettings['False']
          module = new.module('temp_settings_module')
          module.__dict__.update(newSettings)
-@@ -394,8 +394,8 @@
+@@ -389,16 +389,16 @@
+             newSettings[s] = {}
+             for o in p.options(s):
+                 if o != '__name__':
+-                    newSettings[s][o] = p.get(s,o)
++                    newSettings[s][o] = p.get(s, o)
+ 
          ## loop through new settings -> deal with global settings, numbers,
          ## booleans and None ++ also deal with 'importSettings' commands
  
@@ -1191,7 +1903,11 @@
 +            for key, val in list(subDict.items()):
                  if convert:
                      if val.lower().startswith('python:'):
-                         subDict[key] = eval(val[7:],{},{})
+-                        subDict[key] = eval(val[7:],{},{})
++                        subDict[key] = eval(val[7:], {}, {})
+                     if val.lower() == 'none':
+                         subDict[key] = None
+                     if val.lower() == 'true':
 @@ -472,7 +472,7 @@
  
      def hasSetting(self, key):
@@ -1201,7 +1917,43 @@
  
      def setSetting(self, name, value):
          """Set a setting in self._settings."""
-@@ -576,23 +576,23 @@
+@@ -510,7 +510,7 @@
+         
+         newSettings = self.readSettingsFromPySrcStr(theString)
+         self.updateSettings(newSettings,
+-                            merge=newSettings.get('mergeSettings',merge) )
++                            merge=newSettings.get('mergeSettings', merge) )
+         
+     def updateSettingsFromPySrcFile(self, path, merge=True):
+         
+@@ -521,7 +521,7 @@
+         
+         newSettings = self.readSettingsFromPySrcFile(path)
+         self.updateSettings(newSettings,
+-                            merge=newSettings.get('mergeSettings',merge) )
++                            merge=newSettings.get('mergeSettings', merge) )
+ 
+ 
+     def updateSettingsFromConfigFile(self, path, **kw):
+@@ -545,7 +545,7 @@
+ 
+         newSettings = self.readSettingsFromConfigFileObj(inFile, convert=convert)
+         self.updateSettings(newSettings,
+-                            merge=newSettings.get('mergeSettings',merge))
++                            merge=newSettings.get('mergeSettings', merge))
+ 
+     def updateSettingsFromConfigStr(self, configStr, convert=True, merge=True):
+         
+@@ -556,7 +556,7 @@
+         inFile = StringIO(configStr)
+         newSettings = self.readSettingsFromConfigFileObj(inFile, convert=convert)
+         self.updateSettings(newSettings,
+-                            merge=newSettings.get('mergeSettings',merge))
++                            merge=newSettings.get('mergeSettings', merge))
+ 
+ 
+     ## methods for output representations of the settings
+@@ -576,24 +576,22 @@
          iniSettings = {'Globals':{}}
          globals = iniSettings['Globals']
          
@@ -1209,7 +1961,8 @@
 +        for key, theSetting in list(self.settings().items()):
              if type(theSetting) in convertableToStrTypes:
                  globals[key] = theSetting
-             if type(theSetting) is DictType:
+-            if type(theSetting) is DictType:
++            if isinstance(theSetting, DictType):
                  iniSettings[key] = {}
 -                for subKey, subSetting in theSetting.items():
 +                for subKey, subSetting in list(theSetting.items()):
@@ -1217,18 +1970,28 @@
                          iniSettings[key][subKey] = subSetting
          
 -        sections = iniSettings.keys()
-+        sections = list(iniSettings.keys())
-         sections.sort()
+-        sections.sort()
++        sections = sorted(list(iniSettings.keys()))
          outFileWrite = outFile.write # short-cut namebinding for efficiency
          for section in sections:
              outFileWrite("[" + section + "]\n")
              sectDict = iniSettings[section]
              
 -            keys = sectDict.keys()
-+            keys = list(sectDict.keys())
-             keys.sort()
+-            keys.sort()
++            keys = sorted(list(sectDict.keys()))
              for key in keys:
                  if key == "__name__":
+                     continue
+@@ -608,7 +606,7 @@
+         style config file."""
+         
+         path = self.normalizePath(path)
+-        fp = open(path,'w')
++        fp = open(path, 'w')
+         self._createConfigFile(fp)
+         fp.close()
+         
 --- pytivo/Cheetah/SourceReader.py	(original)
 +++ pytivo/Cheetah/SourceReader.py	(refactored)
 @@ -161,7 +161,7 @@
@@ -1240,6 +2003,15 @@
      
      def gotoBookmark(self, name):
          if not self.hasBookmark(name):
+@@ -248,7 +248,7 @@
+         if pos == None:
+             pos = self._pos
+         src = self.src()
+-        return max(src.rfind('\n',0,pos)+1, src.rfind('\r',0,pos)+1, 0)
++        return max(src.rfind('\n', 0, pos)+1, src.rfind('\r', 0, pos)+1, 0)
+         
+     def findEOL(self, pos=None, gobble=False):
+         if pos == None:
 @@ -269,7 +269,7 @@
          return BOL == pos or src[BOL:pos].isspace()
  
@@ -1267,20 +2039,38 @@
      from types import StringTypes
  except ImportError:
 -    StringTypes = (types.StringType,types.UnicodeType)
-+    StringTypes = (bytes,str)
++    StringTypes = (bytes, str)
  try:
      from types import BooleanType
      boolTypeAvailable = True
-@@ -85,7 +86,7 @@
+@@ -85,15 +86,14 @@
      return hash(tuple(hashedList))
  
  def hashDict(d):
 -    items = d.items()
-+    items = list(d.items())
-     items.sort()
+-    items.sort()
++    items = sorted(list(d.items()))
      hashedList = []
      for k, v in items:
-@@ -146,7 +147,7 @@
+         if isinstance(v, dict):
+             v = hashDict(v)
+         elif isinstance(v, list):
+             v = hashList(v)
+-        hashedList.append((k,v))
++        hashedList.append((k, v))
+     return hash(tuple(hashedList))
+ 
+ ################################################################################
+@@ -106,7 +106,7 @@
+         finalName = baseModuleName
+     else:
+         finalName = ('cheetah_%s_%s_%s'%(baseModuleName,
+-                                         str(time.time()).replace('.','_'),
++                                         str(time.time()).replace('.', '_'),
+                                          str(randrange(10000, 99999))))
+     return finalName
+ 
+@@ -146,7 +146,7 @@
          """
          settings = self._settings
          if not source: # @@TR: this needs improving
@@ -1289,7 +2079,7 @@
                  f = open(file)
                  source = f.read()
                  f.close()
-@@ -157,7 +158,7 @@
+@@ -157,7 +157,7 @@
          templateAPIClass = settings.templateAPIClass
          possibleKwArgs = [
              arg for arg in
@@ -1298,7 +2088,18 @@
              if arg not in ('klass', 'source', 'file',)]
  
          compileKwArgs = {}
-@@ -587,13 +588,13 @@
+@@ -278,8 +278,8 @@
+          '_getTemplateAPIClassForIncludeDirectiveCompilation',
+          )
+     _CHEETAH_requiredCheetahClassMethods = ('subclass',) 
+-    _CHEETAH_requiredCheetahClassAttributes = ('cacheRegionClass','cacheStore',
+-                                               'cacheStoreIdPrefix','cacheStoreClass')
++    _CHEETAH_requiredCheetahClassAttributes = ('cacheRegionClass', 'cacheStore',
++                                               'cacheStoreIdPrefix', 'cacheStoreClass')
+ 
+     ## the following are used by .compile(). Most are documented in its docstring.
+     _CHEETAH_cacheModuleFilesForTracebacks = False
+@@ -587,30 +587,30 @@
          try:
              vt = VerifyType.VerifyType
              vtc = VerifyType.VerifyTypeClass
@@ -1315,18 +2116,77 @@
 -                B = types.BooleanType
 +                B = bool
              
-             vt(source, 'source', [N,S,U], 'string or None')
-             vt(file, 'file',[N,S,U,F], 'string, file-like object, or None')
-@@ -655,7 +656,7 @@
-                 cacheDirForModuleFiles, klass._CHEETAH_cacheDirForModuleFiles)
-             vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N,S], 'string or None')
+-            vt(source, 'source', [N,S,U], 'string or None')
+-            vt(file, 'file',[N,S,U,F], 'string, file-like object, or None')
++            vt(source, 'source', [N, S, U], 'string or None')
++            vt(file, 'file', [N, S, U, F], 'string, file-like object, or None')
  
+             baseclass = valOrDefault(baseclass, klass._CHEETAH_defaultBaseclassForTemplates)
+             if isinstance(baseclass, Template):
+                 baseclass = baseclass.__class__
+-            vt(baseclass, 'baseclass', [N,S,C,type], 'string, class or None')
++            vt(baseclass, 'baseclass', [N, S, C, type], 'string, class or None')
+ 
+             cacheCompilationResults = valOrDefault(
+                 cacheCompilationResults, klass._CHEETAH_cacheCompilationResults)
+             if boolTypeAvailable:         
+-                vt(cacheCompilationResults, 'cacheCompilationResults', [I,B], 'boolean')
++                vt(cacheCompilationResults, 'cacheCompilationResults', [I, B], 'boolean')
+ 
+             useCache = valOrDefault(useCache, klass._CHEETAH_useCompilationCache)
+             if boolTypeAvailable:         
+-                vt(cacheCompilationResults, 'cacheCompilationResults', [I,B], 'boolean')
++                vt(cacheCompilationResults, 'cacheCompilationResults', [I, B], 'boolean')
+ 
+             compilerSettings = valOrDefault(
+                 compilerSettings, klass._getCompilerSettings(source, file) or {})
+@@ -623,9 +623,9 @@
+             keepRefToGeneratedCode = valOrDefault(
+                 keepRefToGeneratedCode, klass._CHEETAH_keepRefToGeneratedCode)
+             if boolTypeAvailable:         
+-                vt(cacheCompilationResults, 'cacheCompilationResults', [I,B], 'boolean')
+-        
+-            vt(moduleName, 'moduleName', [N,S], 'string or None')
++                vt(cacheCompilationResults, 'cacheCompilationResults', [I, B], 'boolean')
++        
++            vt(moduleName, 'moduleName', [N, S], 'string or None')
+             __orig_file__ = None
+             if not moduleName:
+                 if file and type(file) in StringTypes:
+@@ -636,12 +636,12 @@
+         
+             className = valOrDefault(
+                 className, klass._CHEETAH_defaultClassNameForTemplates)
+-            vt(className, 'className', [N,S], 'string or None')
++            vt(className, 'className', [N, S], 'string or None')
+             className = className or moduleName
+ 
+             mainMethodName = valOrDefault(
+                 mainMethodName, klass._CHEETAH_defaultMainMethodNameForTemplates)
+-            vt(mainMethodName, 'mainMethodName', [N,S], 'string or None')
++            vt(mainMethodName, 'mainMethodName', [N, S], 'string or None')
+ 
+             moduleGlobals = valOrDefault(
+                 moduleGlobals, klass._CHEETAH_defaultModuleGlobalsForTemplates)
+@@ -649,13 +649,13 @@
+             cacheModuleFilesForTracebacks = valOrDefault(
+                 cacheModuleFilesForTracebacks, klass._CHEETAH_cacheModuleFilesForTracebacks)
+             if boolTypeAvailable:
+-                vt(cacheModuleFilesForTracebacks, 'cacheModuleFilesForTracebacks', [I,B], 'boolean')
++                vt(cacheModuleFilesForTracebacks, 'cacheModuleFilesForTracebacks', [I, B], 'boolean')
+             
+             cacheDirForModuleFiles = valOrDefault(
+                 cacheDirForModuleFiles, klass._CHEETAH_cacheDirForModuleFiles)
+-            vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N,S], 'string or None')
+-
 -        except TypeError, reason:
++            vt(cacheDirForModuleFiles, 'cacheDirForModuleFiles', [N, S], 'string or None')
++
 +        except TypeError as reason:
              raise TypeError(reason)
  
          ##################################################           
-@@ -679,7 +680,7 @@
+@@ -679,7 +679,7 @@
  
          cacheHash = None
          cacheItem = None
@@ -1335,7 +2195,7 @@
              compilerSettingsHash = None
              if compilerSettings:
                  compilerSettingsHash = hashDict(compilerSettings)
-@@ -753,7 +754,7 @@
+@@ -753,7 +753,7 @@
  
                  mod = new.module(uniqueModuleName)
                  if moduleGlobals:
@@ -1344,7 +2204,7 @@
                          setattr(mod, k, v)
                  mod.__file__ = __file__
                  if __orig_file__ and os.path.exists(__orig_file__):
-@@ -765,8 +766,8 @@
+@@ -765,8 +765,8 @@
                  ##
                  try:
                      co = compile(generatedModuleCode, __file__, 'exec')
@@ -1355,7 +2215,7 @@
                      try:
                          parseError = genParserErrorFromPythonException(
                              source, file, generatedModuleCode, exception=e)
-@@ -777,7 +778,7 @@
+@@ -777,7 +777,7 @@
                          raise e
                      else:
                          raise parseError
@@ -1364,7 +2224,7 @@
                      updateLinecache(__file__, generatedModuleCode)
                      e.generatedModuleCode = generatedModuleCode
                      raise
-@@ -845,7 +846,7 @@
+@@ -845,7 +845,7 @@
          
          if hasattr(arg, 'preprocess'):
              return arg
@@ -1373,7 +2233,7 @@
              class WrapperPreprocessor:
                  def preprocess(self, source, file):
                      return arg(source, file)
-@@ -858,7 +859,7 @@
+@@ -858,7 +858,7 @@
              if isinstance(arg, str) or isinstance(arg, (list, tuple)):
                  settings.tokens = arg
              elif isinstance(arg, dict):
@@ -1382,7 +2242,16 @@
                      setattr(settings, k, v)   
              else:
                  settings = arg
-@@ -907,7 +908,7 @@
+@@ -888,7 +888,7 @@
+             (settings.placeholderToken,
+              settings.directiveToken) = normalizeTokens(settings.tokens)
+             
+-        if (not getattr(settings,'compilerSettings', None)
++        if (not getattr(settings, 'compilerSettings', None)
+             and not getattr(settings, 'placeholderToken', None) ):
+             
+             raise TypeError(
+@@ -907,7 +907,7 @@
              normalizeSearchList(settings.templateInitArgs['searchList']))
              
          if not hasattr(settings, 'outputTransformer'):
@@ -1391,7 +2260,7 @@
  
          if not hasattr(settings, 'templateAPIClass'):
              class PreprocessTemplateAPIClass(klass): pass
-@@ -958,14 +959,14 @@
+@@ -958,14 +958,14 @@
          for methodname in klass._CHEETAH_requiredCheetahMethods:
              if not hasattr(concreteTemplateClass, methodname):
                  method = getattr(Template, methodname)
@@ -1408,7 +2277,25 @@
              
          for attrname in klass._CHEETAH_requiredCheetahClassAttributes:
              attrname = '_CHEETAH_'+attrname
-@@ -1124,11 +1125,11 @@
+@@ -977,7 +977,7 @@
+             or concreteTemplateClass.__str__ is object.__str__):
+             
+             mainMethNameAttr = '_mainCheetahMethod_for_'+concreteTemplateClass.__name__
+-            mainMethName = getattr(concreteTemplateClass,mainMethNameAttr, None)
++            mainMethName = getattr(concreteTemplateClass, mainMethNameAttr, None)
+             if mainMethName:
+                 def __str__(self): return getattr(self, mainMethName)()
+             elif (hasattr(concreteTemplateClass, 'respond')
+@@ -986,7 +986,7 @@
+             else:
+                 def __str__(self):
+                     if hasattr(self, mainMethNameAttr):
+-                        return getattr(self,mainMethNameAttr)()
++                        return getattr(self, mainMethNameAttr)()
+                     elif hasattr(self, 'respond'):
+                         return self.respond()
+                     else:
+@@ -1124,28 +1124,28 @@
          ##################################################           
          ## Verify argument keywords and types
  
@@ -1425,7 +2312,21 @@
          vt = VerifyType.VerifyType
          vtc = VerifyType.VerifyTypeClass
          try:
-@@ -1145,7 +1146,7 @@
+-            vt(source, 'source', [N,S,U], 'string or None')
+-            vt(file, 'file', [N,S,U,F], 'string, file open for reading, or None')
+-            vtc(filter, 'filter', [S,C,type], 'string or class', 
++            vt(source, 'source', [N, S, U], 'string or None')
++            vt(file, 'file', [N, S, U, F], 'string, file open for reading, or None')
++            vtc(filter, 'filter', [S, C, type], 'string or class', 
+                 Filters.Filter,
+                 '(if class, must be subclass of Cheetah.Filters.Filter)')
+-            vt(filtersLib, 'filtersLib', [S,M], 'string or module',
++            vt(filtersLib, 'filtersLib', [S, M], 'string or module',
+                 '(if module, must contain subclasses of Cheetah.Filters.Filter)')
+-            vtc(errorCatcher, 'errorCatcher', [N,S,C,type], 'string, class or None',
++            vtc(errorCatcher, 'errorCatcher', [N, S, C, type], 'string, class or None',
+                ErrorCatchers.ErrorCatcher,
+                '(if class, must be subclass of Cheetah.ErrorCatchers.ErrorCatcher)')
              if compilerSettings is not Unspecified:
                  vt(compilerSettings, 'compilerSettings', [D], 'dictionary')
  
@@ -1434,7 +2335,43 @@
              # Re-raise the exception here so that the traceback will end in
              # this function rather than in some utility function.
              raise TypeError(reason)
-@@ -1491,7 +1492,7 @@
+@@ -1296,7 +1296,7 @@
+         """
+         
+         try:
+-            return valueFromSearchList(self.searchList(), varName.replace('$',''), autoCall)
++            return valueFromSearchList(self.searchList(), varName.replace('$', ''), autoCall)
+         except NotFound:
+             if default is not Unspecified:
+                 return default
+@@ -1307,7 +1307,7 @@
+         """Test if a variable name exists in the searchList.
+         """
+         try:
+-            valueFromSearchList(self.searchList(), varName.replace('$',''), autoCall)
++            valueFromSearchList(self.searchList(), varName.replace('$', ''), autoCall)
+             return True
+         except NotFound:
+             return False
+@@ -1356,7 +1356,7 @@
+         various protocols, as PHP allows with its 'URL fopen wrapper'
+         """
+         
+-        fp = open(path,'r')
++        fp = open(path, 'r')
+         output = fp.read()
+         fp.close()
+         return output
+@@ -1434,7 +1434,7 @@
+         if errorCatcher:
+             if type(errorCatcher) in StringTypes:
+                 errorCatcherClass = getattr(ErrorCatchers, errorCatcher)
+-            elif type(errorCatcher) == ClassType:
++            elif isinstance(errorCatcher, ClassType):
+                 errorCatcherClass = errorCatcher
+ 
+             self._CHEETAH__errorCatcher = ec = errorCatcherClass(self)
+@@ -1491,7 +1491,7 @@
          """Called at runtime to handle #include directives.
          """
          _includeID = srcArg            
@@ -1443,7 +2380,27 @@
              if not raw:
                  if includeFrom == 'file':
                      source = None
-@@ -1769,7 +1770,7 @@
+@@ -1509,7 +1509,7 @@
+                 # Template class to be used for compilation so compilerSettings
+                 # can be changed.
+                 compiler = self._getTemplateAPIClassForIncludeDirectiveCompilation(source, file)
+-                nestedTemplateClass = compiler.compile(source=source,file=file)
++                nestedTemplateClass = compiler.compile(source=source, file=file)
+                 nestedTemplate = nestedTemplateClass(_preBuiltSearchList=self.searchList(),
+                                                      _globalSetVars=self._CHEETAH__globalSetVars)
+                 # Set the inner template filters to the initial filter of the
+@@ -1751,8 +1751,8 @@
+             raise TypeError("arg 'src' invalid")
+         sources = source + 's'
+         converters = {
+-            ''     : _Converter('string', None, default,      default ),
+-            'int'  : _Converter('int',     int, defaultInt,   badInt  ),
++            '': _Converter('string', None, default,      default ),
++            'int': _Converter('int',     int, defaultInt,   badInt  ),
+             'float': _Converter('float', float, defaultFloat, badFloat),  }
+         #pprint.pprint(locals());  return {}
+         dic = {} # Destination.
+@@ -1769,7 +1769,7 @@
          # 'dic = super(ThisClass, self).webInput(names, namesMulti, ...)'
          # and then the code below.
          if debug:
@@ -1452,7 +2409,7 @@
          self.searchList().insert(0, dic)
          return dic
  
-@@ -1780,9 +1781,9 @@
+@@ -1780,9 +1780,9 @@
  
      #print dir(exception)
      
@@ -1465,9 +2422,61 @@
      traceback.print_exc(1, sio)
      formatedExc = sio.getvalue()
      
+@@ -1794,16 +1794,16 @@
+     lines = generatedPyCode.splitlines()
+     
+     prevLines = []                  # (i, content)
+-    for i in range(1,4):
++    for i in range(1, 4):
+         if pyLineno-i <=0:
+             break
+-        prevLines.append( (pyLineno+1-i,lines[pyLineno-i]) )
++        prevLines.append( (pyLineno+1-i, lines[pyLineno-i]) )
+     
+     nextLines = []                  # (i, content)
+-    for i in range(1,4):
++    for i in range(1, 4):
+         if not pyLineno+i < len(lines):
+             break
+-        nextLines.append( (pyLineno+i,lines[pyLineno+i]) )
++        nextLines.append( (pyLineno+i, lines[pyLineno+i]) )
+     nextLines.reverse()
+     report = 'Line|Python Code\n'
+     report += '----|-------------------------------------------------------------\n'
+@@ -1850,7 +1850,7 @@
+     
+     message = '\n'.join(message)
+     reader = SourceReader(source, filename=filename)
+-    return ParseError(reader, message, lineno=lineno,col=col)
++    return ParseError(reader, message, lineno=lineno, col=col)
+     
+ 
+ # vim: shiftwidth=4 tabstop=4 expandtab
 --- pytivo/Cheetah/Version.py	(original)
 +++ pytivo/Cheetah/Version.py	(refactored)
-@@ -32,11 +32,11 @@
+@@ -1,12 +1,12 @@
+ Version = '2.0.1'
+-VersionTuple = (2,0,1,'final',0)
++VersionTuple = (2, 0, 1, 'final', 0)
+ 
+ MinCompatibleVersion = '2.0rc6'
+-MinCompatibleVersionTuple = (2,0,0,'candidate',6)
++MinCompatibleVersionTuple = (2, 0, 0, 'candidate', 6)
+ 
+ ####
+ def convertVersionStringToTuple(s):
+-    versionNum = [0,0,0]
++    versionNum = [0, 0, 0]
+     releaseType = 'final'
+     releaseTypeSubNum = 0
+     if s.find('a')!=-1:
+@@ -27,16 +27,16 @@
+         versionNum += [0]
+     releaseTypeSubNum = int(releaseTypeSubNum)
+     
+-    return tuple(versionNum+[releaseType,releaseTypeSubNum])
++    return tuple(versionNum+[releaseType, releaseTypeSubNum])
+ 
  
  if __name__ == '__main__':
      c = convertVersionStringToTuple
@@ -1499,7 +2508,7 @@
      Called by: Cheetah.Servlet.cgiImport()
      """
 -    if type(thing) == types.ClassType and issubclass(thing, Exception):
-+    if type(thing) == type and issubclass(thing, Exception):
++    if isinstance(thing, type) and issubclass(thing, Exception):
          raise thing(errmsg)
      return thing
  
@@ -1519,7 +2528,7 @@
      VerifyType(arg, argname, legalTypes, ltd, errmsgExtra)
      # If no exception, the arg is a legal type.
 -    if type(arg) == types.ClassType and not issubclass(arg, klass):
-+    if type(arg) == type and not issubclass(arg, klass):
++    if isinstance(arg, type) and not issubclass(arg, klass):
          # Must test for "is class type" to avoid TypeError from issubclass().
          m = _errmsg(argname, ltd, errmsgExtra)
          raise TypeError(m)
@@ -1534,6 +2543,15 @@
  except ImportError:
      import pickle
  
+@@ -130,7 +130,7 @@
+             serverData = {}
+             data.append(( name, serverData ))
+             readline = s.readline
+-            while 1:
++            while True:
+                 line = readline()
+                 if not line or line.strip() == 'END': break
+                 stats = line.split(' ', 2)
 @@ -150,7 +150,7 @@
              sys.stderr.write("MemCached: %s\n" % str)
  
@@ -1548,7 +2566,7 @@
  
      def _get_server(self, key):
 -        if type(key) == types.TupleType:
-+        if type(key) == tuple:
++        if isinstance(key, tuple):
              serverhash = key[0]
              key = key[1]
          else:
@@ -1601,7 +2619,7 @@
 -        except (_Error, socket.error), msg:
 -            if type(msg) is types.TupleType:
 +        except (_Error, socket.error) as msg:
-+            if type(msg) is tuple:
++            if isinstance(msg, tuple):
                  msg = msg[1]
              server.mark_dead(msg)
              return None
@@ -1670,6 +2688,15 @@
              self.mark_dead("connect: %s" % msg[1])
              return None
          self.socket = s
+@@ -518,7 +518,7 @@
+     def readline(self):
+         buffers = ''
+         recv = self.socket.recv
+-        while 1:
++        while True:
+             data = recv(1)
+             if not data:
+                 self.mark_dead('Connection closed while reading from %s'
 @@ -556,27 +556,27 @@
      return doctest.testmod(memcache, globs=globs)
  
@@ -1786,15 +2813,16 @@
  
      def delete(self, filename=None):
          """Remove tags from a file."""
-@@ -210,7 +210,7 @@
+@@ -210,8 +210,7 @@
                     for Kind in options]
      finally:
          fileobj.close()
 -    results = zip(results, options)
-+    results = list(zip(results, options))
-     results.sort()
+-    results.sort()
++    results = sorted(zip(results, options))
      (score, name), Kind = results[-1]
      if score > 0: return Kind(filename)
+     else: return None
 --- pytivo/mutagen/_constants.py	(original)
 +++ pytivo/mutagen/_constants.py	(refactored)
 @@ -1,153 +1,153 @@
@@ -2279,7 +3307,12 @@
  
      def __contains__(self, key):
          """Return true if the key has any values."""
-@@ -220,4 +220,4 @@
+@@ -216,8 +216,8 @@
+ 
+     def keys(self):
+         """Return all keys in the comment."""
+-        return self and list(set([k.lower() for k, v in self]))
++        return self and list({k.lower() for k, v in self})
  
      def as_dict(self):
          """Return a copy of the comment data in a real dict."""
@@ -2313,16 +3346,17 @@
  
  class error(IOError): pass
  class APENoHeaderError(error, ValueError): pass
-@@ -199,7 +199,7 @@
+@@ -199,8 +199,7 @@
  
      def pprint(self):
          """Return tag key=value pairs in a human-readable format."""
 -        items = self.items()
-+        items = list(self.items())
-         items.sort()
+-        items.sort()
++        items = sorted(list(self.items()))
          return "\n".join(["%s=%s" % (k, v.pprint()) for k, v in items])
  
-@@ -271,7 +271,7 @@
+     def load(self, filename):
+@@ -271,7 +270,7 @@
  
          if not isinstance(value, _APEValue):
              # let's guess at the content if we're not already a value...
@@ -2331,7 +3365,7 @@
                  # unicode? we've got to be text.
                  value = APEValue(utf8(value), TEXT)
              elif isinstance(value, list):
-@@ -289,7 +289,7 @@
+@@ -289,7 +288,7 @@
          self.__dict[key.lower()] = value
  
      def keys(self):
@@ -2340,7 +3374,7 @@
  
      def save(self, filename=None):
          """Save changes to a file.
-@@ -318,7 +318,7 @@
+@@ -318,7 +317,7 @@
          # "APE tags items should be sorted ascending by size... This is
          # not a MUST, but STRONGLY recommended. Actually the items should
          # be sorted by importance/byte, but this is not feasible."
@@ -2349,7 +3383,7 @@
          tags.sort(lambda a, b: cmp(len(a), len(b)))
          num_tags = len(tags)
          tags = "".join(tags)
-@@ -401,20 +401,20 @@
+@@ -401,20 +400,20 @@
      strings (with a null seperating the values), or arrays of strings."""
  
      def __unicode__(self):
@@ -2374,7 +3408,7 @@
  
      __hash__ = _APEValue.__hash__
  
-@@ -436,7 +436,7 @@
+@@ -436,7 +435,7 @@
  
      External values are usually URI or IRI strings.
      """
@@ -2780,7 +3814,7 @@
          except AttributeError: pass
          data = self.__fileobj.read(size)
          if len(data) != size: raise EOFError
-@@ -117,18 +117,18 @@
+@@ -117,23 +117,23 @@
                  self.size = 0
                  raise ID3NoHeaderError("%s: too small (%d bytes)" %(
                      filename, self.__filesize))
@@ -2803,12 +3837,19 @@
              else:
                  frames = self.__known_frames
                  if frames is None:
+-                    if (2,3,0) <= self.version: frames = Frames
+-                    elif (2,2,0) <= self.version: frames = Frames_2_2
++                    if (2, 3, 0) <= self.version: frames = Frames
++                    elif (2, 2, 0) <= self.version: frames = Frames_2_2
+                 data = self.__fullread(self.size - 10)
+                 for frame in self.__read_frames(data, frames=frames):
+                     if isinstance(frame, Frame): self.add(frame)
 @@ -161,14 +161,14 @@
          if key in self: return [self[key]]
          else:
              key = key + ":"
 -            return [v for s,v in self.items() if s.startswith(key)]
-+            return [v for s,v in list(self.items()) if s.startswith(key)]
++            return [v for s, v in list(self.items()) if s.startswith(key)]
  
      def delall(self, key):
          """Delete all tags of a given kind; see getall."""
@@ -2820,16 +3861,61 @@
                  del(self[k])
  
      def setall(self, key, values):
-@@ -186,7 +186,7 @@
+@@ -186,8 +186,7 @@
          However, ID3 frames can have multiple keys:
              POPM=user@example.org=3 128/255
          """
 -        frames = list(map(Frame.pprint, self.values()))
-+        frames = list(map(Frame.pprint, list(self.values())))
-         frames.sort()
+-        frames.sort()
++        frames = sorted(map(Frame.pprint, list(self.values())))
          return "\n".join(frames)
  
-@@ -360,9 +360,9 @@
+     def loaded_frame(self, tag):
+@@ -218,9 +217,9 @@
+                     % (fn, vmaj))
+ 
+         if self.PEDANTIC:
+-            if (2,4,0) <= self.version and (flags & 0x0f):
++            if (2, 4, 0) <= self.version and (flags & 0x0f):
+                 raise ValueError("'%s' has invalid flags %#02x" % (fn, flags))
+-            elif (2,3,0) <= self.version < (2,4,0) and (flags & 0x1f):
++            elif (2, 3, 0) <= self.version < (2, 4, 0) and (flags & 0x1f):
+                 raise ValueError("'%s' has invalid flags %#02x" % (fn, flags))
+ 
+         if self.f_extended:
+@@ -238,7 +237,7 @@
+                 self.__extsize = 0
+                 self.__fileobj.seek(-4, 1)
+                 self.__readbytes -= 4
+-            elif self.version >= (2,4,0):
++            elif self.version >= (2, 4, 0):
+                 # "Where the 'Extended header size' is the size of the whole
+                 # extended header, stored as a 32 bit synchsafe integer."
+                 self.__extsize = BitPaddedInt(extsize) - 4
+@@ -294,11 +293,11 @@
+         return BitPaddedInt
+ 
+     def __read_frames(self, data, frames):
+-        if self.version < (2,4,0) and self.f_unsynch:
++        if self.version < (2, 4, 0) and self.f_unsynch:
+             try: data = unsynch.decode(data)
+             except ValueError: pass
+ 
+-        if (2,3,0) <= self.version:
++        if (2, 3, 0) <= self.version:
+             bpi = self.__determine_bpi(data, frames)
+             while data:
+                 header = data[:10]
+@@ -317,7 +316,7 @@
+                     except NotImplementedError: yield header + framedata
+                     except ID3JunkFrameError: pass
+ 
+-        elif (2,2,0) <= self.version:
++        elif (2, 2, 0) <= self.version:
+             while data:
+                 header = data[0:6]
+                 try: name, size = unpack('>3s3s', header)
+@@ -360,9 +359,9 @@
  
          # Sort frames by 'importance'
          order = ["TIT2", "TPE1", "TRCK", "TALB", "TPOS", "TDRC", "TCON"]
@@ -2841,7 +3927,7 @@
          frames.sort(lambda a, b: cmp(order.get(a[0][:4], last),
                                       order.get(b[0][:4], last)))
  
-@@ -372,7 +372,7 @@
+@@ -372,7 +371,7 @@
          if not framedata:
              try:
                  self.delete(filename)
@@ -2850,7 +3936,7 @@
                  from errno import ENOENT
                  if err.errno != ENOENT: raise
              return
-@@ -382,7 +382,7 @@
+@@ -382,7 +381,7 @@
  
          if filename is None: filename = self.filename
          try: f = open(filename, 'rb+')
@@ -2859,7 +3945,7 @@
              from errno import ENOENT
              if err.errno != ENOENT: raise
              f = open(filename, 'ab') # create, then reopen
-@@ -410,7 +410,7 @@
+@@ -410,7 +409,7 @@
  
              try:
                  f.seek(-128, 2)
@@ -2868,7 +3954,16 @@
                  # If the file is too small, that's OK - it just means
                  # we're certain it doesn't have a v1 tag.
                  from errno import EINVAL
-@@ -570,7 +570,7 @@
+@@ -478,7 +477,7 @@
+         at some point; it is called by default when loading the tag.
+         """
+ 
+-        if self.version < (2,3,0): del self.unknown_frames[:]
++        if self.version < (2, 3, 0): del self.unknown_frames[:]
+         # unsafe to write
+ 
+         # TDAT, TYER, and TIME have been turned into TDRC.
+@@ -570,7 +569,7 @@
      def __new__(cls, value, bits=7, bigendian=True):
          "Strips 8-bits bits out of every byte"
          mask = (1<<(bits))-1
@@ -2877,7 +3972,7 @@
              bytes = []
              while value:
                  bytes.append(value & ((1<<bits)-1))
-@@ -579,10 +579,10 @@
+@@ -579,10 +578,10 @@
              bytes = [ord(byte) & mask for byte in value]
              if bigendian: bytes.reverse()
          numeric_value = 0
@@ -2891,7 +3986,7 @@
          else:
              self = int.__new__(BitPaddedInt, numeric_value)
          self.bits = bits
-@@ -601,7 +601,7 @@
+@@ -601,7 +600,7 @@
          # PCNT and POPM use growing integers of at least 4 bytes as counters.
          if width == -1: width = max(4, len(bytes))
          if len(bytes) > width:
@@ -2900,7 +3995,7 @@
          else: bytes.extend([0] * (width-len(bytes)))
          if bigendian: bytes.reverse()
          return ''.join(map(chr, bytes))
-@@ -684,7 +684,7 @@
+@@ -684,7 +683,7 @@
      def validate(self, frame, value):
          if 0 <= value <= 3: return value
          if value is None: return None
@@ -2909,7 +4004,7 @@
  
  class StringSpec(Spec):
      def __init__(self, name, length):
-@@ -696,8 +696,8 @@
+@@ -696,8 +695,8 @@
          else: return (str(value) + '\x00' * s.len)[:s.len]
      def validate(s, frame, value):
          if value is None: return None
@@ -2920,7 +4015,7 @@
  
  class BinaryDataSpec(Spec):
      def read(self, frame, data): return data, ''
-@@ -726,14 +726,14 @@
+@@ -726,14 +725,14 @@
                      data, ret = data[0:offset], data[offset+2:]; break
              except ValueError: pass
  
@@ -2937,7 +4032,7 @@
  
  class MultiSpec(Spec):
      def __init__(self, name, *specs, **kw):
-@@ -765,7 +765,7 @@
+@@ -765,30 +764,30 @@
  
      def validate(self, frame, value):
          if value is None: return []
@@ -2946,16 +4041,25 @@
              value = value.split(self.sep)
          if isinstance(value, list):
              if len(self.specs) == 1:
-@@ -774,7 +774,7 @@
+                 return [self.specs[0].validate(frame, v) for v in value]
+             else:
                  return [ 
-                     [s.validate(frame, v) for (v,s) in zip(val, self.specs)]
+-                    [s.validate(frame, v) for (v,s) in zip(val, self.specs)]
++                    [s.validate(frame, v) for (v, s) in zip(val, self.specs)]
                      for val in value ]
 -        raise ValueError, 'Invalid MultiSpec data: %r' % value
 +        raise ValueError('Invalid MultiSpec data: %r' % value)
  
  class EncodedNumericTextSpec(EncodedTextSpec): pass
  class EncodedNumericPartTextSpec(EncodedTextSpec): pass
-@@ -788,7 +788,7 @@
+ 
+ class Latin1TextSpec(EncodedTextSpec):
+     def read(self, frame, data):
+-        if '\x00' in data: data, ret = data.split('\x00',1)
++        if '\x00' in data: data, ret = data.split('\x00', 1)
+         else: ret = ''
+         return data.decode('latin1'), ret
+ 
      def write(self, data, value):
          return value.encode('latin1') + '\x00'
  
@@ -2964,7 +4068,7 @@
  
  class ID3TimeStamp(object):
      """A time stamp in ID3v2 format.
-@@ -812,9 +812,9 @@
+@@ -812,9 +811,9 @@
          parts = [self.year, self.month, self.day,
                  self.hour, self.minute, self.second]
          pieces = []
@@ -2976,7 +4080,7 @@
  
      def set_text(self, text, splitre=re.compile('[-T:/.]|\s+')):
          year, month, day, hour, minute, second = \
-@@ -843,11 +843,11 @@
+@@ -843,11 +842,11 @@
  
      def validate(self, frame, value):
          try: return ID3TimeStamp(value)
@@ -2990,16 +4094,26 @@
  
  class VolumeAdjustmentSpec(Spec):
      def read(self, frame, data):
-@@ -931,7 +931,7 @@
+@@ -931,8 +930,7 @@
              freq /= 2.0
              adj /= 512.0
              adjustments[freq] = adj
 -        adjustments = adjustments.items()
-+        adjustments = list(adjustments.items())
-         adjustments.sort()
+-        adjustments.sort()
++        adjustments = sorted(list(adjustments.items()))
          return adjustments, data
  
-@@ -1064,21 +1064,21 @@
+     def write(self, frame, value):
+@@ -1054,7 +1052,7 @@
+     def fromData(cls, id3, tflags, data):
+         """Construct this ID3 frame from raw string data."""
+ 
+-        if (2,4,0) <= id3.version:
++        if (2, 4, 0) <= id3.version:
+             if tflags & (Frame.FLAG24_COMPRESS | Frame.FLAG24_DATALEN):
+                 # The data length int is syncsafe in 2.4 (but not 2.3).
+                 # However, we don't actually need the data length int,
+@@ -1064,23 +1062,23 @@
                  data = data[4:]
              if tflags & Frame.FLAG24_UNSYNCH or id3.f_unsynch:
                  try: data = unsynch.decode(data)
@@ -3022,11 +4136,15 @@
 +                    except zlibError as err:
                          if id3.PEDANTIC:
 -                            raise ID3BadCompressedData, '%s: %r' % (err, data)
+-
+-        elif (2,3,0) <= id3.version:
 +                            raise ID3BadCompressedData('%s: %r' % (err, data))
- 
-         elif (2,3,0) <= id3.version:
++
++        elif (2, 3, 0) <= id3.version:
              if tflags & Frame.FLAG23_COMPRESS:
-@@ -1088,9 +1088,9 @@
+                 usize, = unpack('>L', data[:4])
+                 data = data[4:]
+@@ -1088,9 +1086,9 @@
                  raise ID3EncryptionUnsupportedError
              if tflags & Frame.FLAG23_COMPRESS:
                  try: data = data.decode('zlib')
@@ -3038,7 +4156,7 @@
  
          frame = cls()
          frame._rawdata = data
-@@ -1169,12 +1169,12 @@
+@@ -1169,12 +1167,12 @@
      """
  
      _framespec = [ EncodingSpec('encoding'),
@@ -3054,7 +4172,7 @@
          return self.text == other
      __hash__ = Frame.__hash__
      def __getitem__(self, item): return self.text[item]
-@@ -1192,7 +1192,7 @@
+@@ -1192,7 +1190,7 @@
      """
  
      _framespec = [ EncodingSpec('encoding'),
@@ -3063,7 +4181,7 @@
  
      def __pos__(self):
          """Return the numerical value of the string."""
-@@ -1208,7 +1208,7 @@
+@@ -1208,7 +1206,7 @@
      """
  
      _framespec = [ EncodingSpec('encoding'),
@@ -3072,7 +4190,7 @@
      def __pos__(self):
          return int(self.text[0].split("/")[0])
  
-@@ -1220,7 +1220,7 @@
+@@ -1220,7 +1218,7 @@
      """
  
      _framespec = [ EncodingSpec('encoding'),
@@ -3081,7 +4199,7 @@
      def __str__(self): return self.__unicode__().encode('utf-8')
      def __unicode__(self): return ','.join([stamp.text for stamp in self.text])
      def _pprint(self):
-@@ -1268,9 +1268,9 @@
+@@ -1268,9 +1266,9 @@
          for value in self.text:
              if value.isdigit():
                  try: genres.append(self.GENRES[int(value)])
@@ -3094,7 +4212,7 @@
              elif value:
                  newgenres = []
                  genreid, dummy, genrename = genre_re.match(value).groups()
-@@ -1278,11 +1278,11 @@
+@@ -1278,11 +1276,11 @@
                  if genreid:
                      for gid in genreid[1:-1].split(")("):
                          if gid.isdigit() and int(gid) < len(self.GENRES):
@@ -3110,7 +4228,7 @@
  
                  if genrename:
                      # "Unescaping" the first parenthesis
-@@ -1294,8 +1294,8 @@
+@@ -1294,8 +1292,8 @@
          return genres
  
      def __set_genres(self, genres):
@@ -3121,7 +4239,7 @@
  
      def __decode(self, value):
          if isinstance(value, str):
-@@ -1366,7 +1366,7 @@
+@@ -1366,7 +1364,7 @@
      the same). Many taggers use this frame to store freeform keys.
      """
      _framespec = [ EncodingSpec('encoding'), EncodedTextSpec('desc'),
@@ -3130,7 +4248,7 @@
      HashKey = property(lambda s: '%s:%s' % (s.FrameID, s.desc))
      def _pprint(self): return "%s=%s" % (self.desc, " / ".join(self.text))
  
-@@ -1488,7 +1488,7 @@
+@@ -1488,7 +1486,7 @@
      """
      _framespec = [ EncodingSpec('encoding'), StringSpec('lang', 3),
          EncodedTextSpec('desc'),
@@ -3139,7 +4257,7 @@
      HashKey = property(lambda s: '%s:%s:%r' % (s.FrameID, s.desc, s.lang))
      def _pprint(self): return "%s=%r=%s" % (
          self.desc, self.lang, " / ".join(self.text))
-@@ -1590,7 +1590,7 @@
+@@ -1590,7 +1588,7 @@
      def __eq__(self, other): return self.count == other
      __hash__ = Frame.__hash__
      def __pos__(self): return self.count
@@ -3148,25 +4266,25 @@
  
  class POPM(FrameOpt):
      """Popularimeter.
-@@ -1835,7 +1835,7 @@
+@@ -1835,7 +1833,7 @@
      def __eq__(self, other): return self.Fi == other
      __hash__ = Frame.__hash__
  
 -Frames = dict([(k,v) for (k,v) in globals().items()
-+Frames = dict([(k,v) for (k,v) in list(globals().items())
++Frames = dict([(k, v) for (k, v) in list(globals().items())
          if len(k)==4 and isinstance(v, type) and issubclass(v, Frame)])
  """All supported ID3v2 frames, keyed by frame name."""
  del(k); del(v)
-@@ -1929,7 +1929,7 @@
+@@ -1929,7 +1927,7 @@
      _framespec = [ StringSpec('frameid', 3), Latin1TextSpec('url') ]
      _optionalspec = [ BinaryDataSpec('data') ]
  
 -Frames_2_2 = dict([(k,v) for (k,v) in globals().items()
-+Frames_2_2 = dict([(k,v) for (k,v) in list(globals().items())
++Frames_2_2 = dict([(k, v) for (k, v) in list(globals().items())
          if len(k)==3 and isinstance(v, type) and issubclass(v, Frame)])
  
  # support open(filename) as interface
-@@ -1965,8 +1965,8 @@
+@@ -1965,8 +1963,8 @@
      def fix(string):
          return string.split("\x00")[0].strip().decode('latin1')
  
@@ -3177,7 +4295,7 @@
  
      frames = {}
      if title: frames["TIT2"] = TIT2(encoding=0, text=title)
-@@ -1987,8 +1987,8 @@
+@@ -1987,8 +1985,8 @@
  
      v1 = {}
  
@@ -3289,15 +4407,23 @@
  
  class MPEGInfo(object):
      """MPEG audio stream information
-@@ -46,7 +46,7 @@
+@@ -46,11 +46,11 @@
  
      # Map (version, layer) tuples to bitrates.
      __BITRATE = {
 -        (1, 1): range(0, 480, 32),
+-        (1, 2): [0, 32, 48, 56, 64, 80, 96, 112,128,160,192,224,256,320,384],
+-        (1, 3): [0, 32, 40, 48, 56, 64, 80, 96, 112,128,160,192,224,256,320],
+-        (2, 1): [0, 32, 48, 56, 64, 80, 96, 112,128,144,160,176,192,224,256],
+-        (2, 2): [0,  8, 16, 24, 32, 40, 48,  56, 64, 80, 96,112,128,144,160],
 +        (1, 1): list(range(0, 480, 32)),
-         (1, 2): [0, 32, 48, 56, 64, 80, 96, 112,128,160,192,224,256,320,384],
-         (1, 3): [0, 32, 40, 48, 56, 64, 80, 96, 112,128,160,192,224,256,320],
-         (2, 1): [0, 32, 48, 56, 64, 80, 96, 112,128,144,160,176,192,224,256],
++        (1, 2): [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384],
++        (1, 3): [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320],
++        (2, 1): [0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256],
++        (2, 2): [0,  8, 16, 24, 32, 40, 48,  56, 64, 80, 96, 112, 128, 144, 160],
+         }
+         
+     __BITRATE[(2, 3)] = __BITRATE[(2, 2)]
 @@ -95,7 +95,7 @@
          # and 90% through the file.
          for i in [offset, 0.3 * size, 0.6 * size, 0.9 * size]:
@@ -4016,6 +5142,15 @@
          else:
 --- pytivo/plugins/video/transcode.py	(original)
 +++ pytivo/plugins/video/transcode.py	(refactored)
+@@ -43,7 +43,7 @@
+     patchSubprocess()
+ 
+ def debug(msg):
+-    if type(msg) == str:
++    if isinstance(msg, str):
+         try:
+             msg = msg.decode('utf8')
+         except:
 @@ -81,7 +81,7 @@
  
      ffmpeg_path = config.get_bin('ffmpeg')
@@ -4088,7 +5223,7 @@
 -                                           key=lambda (k,v): (k,v))
 +                audiomap.update(list(zip(newmap[::2], newmap[1::2])))
 +                vInfo['mapAudio'] = sorted(list(audiomap.items()),
-+                                           key=lambda k_v: (k_v[0],k_v[1]))
++                                           key=lambda k_v: (k_v[0], k_v[1]))
              elif key.startswith('Override_millisecs'):
                  vInfo[key.replace('Override_', '')] = int(data[key])
              else:

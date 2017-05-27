@@ -43,7 +43,7 @@ if mswindows:
     patchSubprocess()
 
 def debug(msg):
-    if type(msg) == str:
+    if isinstance(msg, str):
         try:
             msg = msg.decode('utf8')
         except:
@@ -880,7 +880,7 @@ def video_info(inFile, cache=True):
                 newmap = shlex.split(data[key])
                 audiomap.update(list(zip(newmap[::2], newmap[1::2])))
                 vInfo['mapAudio'] = sorted(list(audiomap.items()),
-                                           key=lambda k_v: (k_v[0],k_v[1]))
+                                           key=lambda k_v: (k_v[0], k_v[1]))
             elif key.startswith('Override_millisecs'):
                 vInfo[key.replace('Override_', '')] = int(data[key])
             else:

@@ -189,7 +189,7 @@ def _wrapNotFoundException(exc, fullName, namespace):
     
 def hasKey(obj, key):
     """Determine if 'obj' has 'key' """
-    if hasattr(obj,'has_key') and key in obj:
+    if hasattr(obj, 'has_key') and key in obj:
         return True
     elif hasattr(obj, key):
         return True
@@ -341,7 +341,7 @@ def example():
         }
     b = 'this is local b'
 
-    print(valueForKey(a.dic,'subDict'))
+    print(valueForKey(a.dic, 'subDict'))
     print(valueForName(a, 'dic.item'))
     print(valueForName(vars(), 'b'))
     print(valueForName(__builtins__, 'dir')())

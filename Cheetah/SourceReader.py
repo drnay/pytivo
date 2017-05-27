@@ -248,7 +248,7 @@ class SourceReader:
         if pos == None:
             pos = self._pos
         src = self.src()
-        return max(src.rfind('\n',0,pos)+1, src.rfind('\r',0,pos)+1, 0)
+        return max(src.rfind('\n', 0, pos)+1, src.rfind('\r', 0, pos)+1, 0)
         
     def findEOL(self, pos=None, gobble=False):
         if pos == None:

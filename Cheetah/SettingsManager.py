@@ -49,9 +49,9 @@ class BaseErrorClass: pass
 ## CONSTANTS & GLOBALS ##
 
 try:
-    True,False
+    True, False
 except NameError:
-    True, False = (1==1),(1==0)
+    True, False = (1==1), (1==0)
 
 numberRE = re.compile(Number)
 complexNumberRE = re.compile('[\(]*' +Number + r'[ \t]*\+[ \t]*' + Number + '[\)]*')
@@ -76,9 +76,9 @@ def mergeNestedDictionaries(dict1, dict2, copy=False, deepcopy=False):
     elif deepcopy:
         dict1 = copyModule.deepcopy(dict1)
         
-    for key,val in list(dict2.items()):
-        if key in dict1 and type(val) == dict and \
-           type(dict1[key]) == dict:
+    for key, val in list(dict2.items()):
+        if key in dict1 and isinstance(val, dict) and \
+           isinstance(dict1[key], dict):
             
             dict1[key] = mergeNestedDictionaries(dict1[key], val)
         else:
@@ -145,7 +145,7 @@ def translateClassBasedConfigSyntax(src):
     outputLines = []
     for line in src.splitlines():
         if customClassRe.match(line) and \
-           line.strip().split(':')[0] not in ('else','try', 'except', 'finally'):
+           line.strip().split(':')[0] not in ('else', 'try', 'except', 'finally'):
             
             line = customClassRe.sub(
                 r'\g<indent>class \g<class>(SettingsContainer):', line)
@@ -228,7 +228,7 @@ class _SettingsCollector:
         The default implementation just normalizes the path for the current
         operating system."""
         
-        return os.path.normpath(path.replace("\\",'/'))
+        return os.path.normpath(path.replace("\\", '/'))
 
 
     def readSettingsFromContainer(self, container, ignoreUnderscored=True):
@@ -240,7 +240,7 @@ class _SettingsCollector:
         """
         
         S = {}
-        if type(container) == ModuleType:
+        if isinstance(container, ModuleType):
             attrs = vars(container)
         else:
             attrs = self._getAllAttrsFromContainer(container)
@@ -262,8 +262,8 @@ class _SettingsCollector:
         """Check if 'thing' is a Python module or a subclass of
         SettingsContainer."""
         
-        return type(thing) == ModuleType or (
-            type(thing) == ClassType and issubclass(thing, SettingsContainer)
+        return isinstance(thing, ModuleType) or (
+            isinstance(thing, ClassType) and issubclass(thing, SettingsContainer)
             ) 
 
     def _getAllAttrsFromContainer(self, container):
@@ -297,7 +297,7 @@ class _SettingsCollector:
         tmpPath = tempfile.mkstemp('webware_temp')
         
         pySrc = translateClassBasedConfigSyntax(open(path).read())
-        modName = path.replace('.','_').replace('/','_').replace('\\','_')        
+        modName = path.replace('.', '_').replace('/', '_').replace('\\', '_')        
         open(tmpPath, 'w').write(pySrc)
         try:
             fp = open(tmpPath)
@@ -330,9 +330,9 @@ class _SettingsCollector:
         
         """Return a dictionary of the settings in a Python src string."""
 
-        globalsDict = {'True':1,
-                       'False':0,
-                       'SettingsContainer':SettingsContainer,
+        globalsDict = {'True': 1,
+                       'False': 0,
+                       'SettingsContainer': SettingsContainer,
                        }
         newSettings = {'self':self}
         exec(theString, globalsDict, newSettings)
@@ -389,7 +389,7 @@ class _SettingsCollector:
             newSettings[s] = {}
             for o in p.options(s):
                 if o != '__name__':
-                    newSettings[s][o] = p.get(s,o)
+                    newSettings[s][o] = p.get(s, o)
 
         ## loop through new settings -> deal with global settings, numbers,
         ## booleans and None ++ also deal with 'importSettings' commands
@@ -398,7 +398,7 @@ class _SettingsCollector:
             for key, val in list(subDict.items()):
                 if convert:
                     if val.lower().startswith('python:'):
-                        subDict[key] = eval(val[7:],{},{})
+                        subDict[key] = eval(val[7:], {}, {})
                     if val.lower() == 'none':
                         subDict[key] = None
                     if val.lower() == 'true':
@@ -510,7 +510,7 @@ class SettingsManager(_SettingsCollector):
         
         newSettings = self.readSettingsFromPySrcStr(theString)
         self.updateSettings(newSettings,
-                            merge=newSettings.get('mergeSettings',merge) )
+                            merge=newSettings.get('mergeSettings', merge) )
         
     def updateSettingsFromPySrcFile(self, path, merge=True):
         
@@ -521,7 +521,7 @@ class SettingsManager(_SettingsCollector):
         
         newSettings = self.readSettingsFromPySrcFile(path)
         self.updateSettings(newSettings,
-                            merge=newSettings.get('mergeSettings',merge) )
+                            merge=newSettings.get('mergeSettings', merge) )
 
 
     def updateSettingsFromConfigFile(self, path, **kw):
@@ -545,7 +545,7 @@ class SettingsManager(_SettingsCollector):
 
         newSettings = self.readSettingsFromConfigFileObj(inFile, convert=convert)
         self.updateSettings(newSettings,
-                            merge=newSettings.get('mergeSettings',merge))
+                            merge=newSettings.get('mergeSettings', merge))
 
     def updateSettingsFromConfigStr(self, configStr, convert=True, merge=True):
         
@@ -556,7 +556,7 @@ class SettingsManager(_SettingsCollector):
         inFile = StringIO(configStr)
         newSettings = self.readSettingsFromConfigFileObj(inFile, convert=convert)
         self.updateSettings(newSettings,
-                            merge=newSettings.get('mergeSettings',merge))
+                            merge=newSettings.get('mergeSettings', merge))
 
 
     ## methods for output representations of the settings
@@ -579,21 +579,19 @@ class SettingsManager(_SettingsCollector):
         for key, theSetting in list(self.settings().items()):
             if type(theSetting) in convertableToStrTypes:
                 globals[key] = theSetting
-            if type(theSetting) is DictType:
+            if isinstance(theSetting, DictType):
                 iniSettings[key] = {}
                 for subKey, subSetting in list(theSetting.items()):
                     if type(subSetting) in convertableToStrTypes:
                         iniSettings[key][subKey] = subSetting
         
-        sections = list(iniSettings.keys())
-        sections.sort()
+        sections = sorted(list(iniSettings.keys()))
         outFileWrite = outFile.write # short-cut namebinding for efficiency
         for section in sections:
             outFileWrite("[" + section + "]\n")
             sectDict = iniSettings[section]
             
-            keys = list(sectDict.keys())
-            keys.sort()
+            keys = sorted(list(sectDict.keys()))
             for key in keys:
                 if key == "__name__":
                     continue
@@ -608,7 +606,7 @@ class SettingsManager(_SettingsCollector):
         style config file."""
         
         path = self.normalizePath(path)
-        fp = open(path,'w')
+        fp = open(path, 'w')
         self._createConfigFile(fp)
         fp.close()
         

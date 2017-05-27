@@ -117,7 +117,7 @@ definition.""")
         if self._CHEETAH__isControlledByWebKit:
             return BaseServlet.serverSidePath(self, path)
         elif path:
-            return normpath(abspath(path.replace("\\",'/')))
+            return normpath(abspath(path.replace("\\", '/')))
         elif hasattr(self, '_filePath') and self._filePath:
             return normpath(abspath(self._filePath))
         else:

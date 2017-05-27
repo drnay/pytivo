@@ -30,7 +30,7 @@ def useOrRaise(thing, errmsg=''):
 
     Called by: Cheetah.Servlet.cgiImport()
     """
-    if type(thing) == type and issubclass(thing, Exception):
+    if isinstance(thing, type) and issubclass(thing, Exception):
         raise thing(errmsg)
     return thing
 

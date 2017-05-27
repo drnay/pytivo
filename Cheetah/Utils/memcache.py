@@ -130,7 +130,7 @@ class Client:
             serverData = {}
             data.append(( name, serverData ))
             readline = s.readline
-            while 1:
+            while True:
                 line = readline()
                 if not line or line.strip() == 'END': break
                 stats = line.split(' ', 2)
@@ -169,7 +169,7 @@ class Client:
                 self.buckets.append(server)
 
     def _get_server(self, key):
-        if type(key) == tuple:
+        if isinstance(key, tuple):
             serverhash = key[0]
             key = key[1]
         else:
@@ -345,7 +345,7 @@ class Client:
             value = self._recv_value(server, flags, rlen)
             server.expect("END")
         except (_Error, socket.error) as msg:
-            if type(msg) is tuple:
+            if isinstance(msg, tuple):
                 msg = msg[1]
             server.mark_dead(msg)
             return None
@@ -518,7 +518,7 @@ class _Host:
     def readline(self):
         buffers = ''
         recv = self.socket.recv
-        while 1:
+        while True:
             data = recv(1)
             if not data:
                 self.mark_dead('Connection closed while reading from %s'
