@@ -6,8 +6,8 @@ import platform
 import sys
 import time
 
-if sys.version_info[0] != 2 or sys.version_info[1] < 5:
-    print('ERROR: pyTivo requires Python >= 2.5, < 3.0.\n')
+if sys.version_info[0] < 3 or sys.version_info[1] < 4:
+    print('ERROR: pyTivo requires Python >= 3.4.\n')
     sys.exit(1)
 
 try:

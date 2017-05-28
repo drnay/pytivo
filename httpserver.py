@@ -60,7 +60,7 @@ class TivoHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
     def add_container(self, name, settings):
         if name in self.containers or name == 'TiVoConnect':
-            raise "Container Name in use"
+            raise Exception("Container Name in use")
         try:
             self.containers[name] = settings
         except KeyError:
@@ -72,7 +72,7 @@ class TivoHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
             self.add_container(section, settings)
 
     def handle_error(self, request, client_address):
-        self.logger.exception('Exception during request from %s' % 
+        self.logger.exception('Exception during request from %s' %
                               (client_address,))
 
     def set_beacon(self, beacon):
@@ -95,7 +95,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         return host
 
     def version_string(self):
-        """ Override version_string() so it doesn't include the Python 
+        """ Override version_string() so it doesn't include the Python
             version.
 
         """
@@ -349,7 +349,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
                 for tsn in config.tivos:
                     if tsn and 'address' in config.tivos[tsn]:
                         t.togo += ('<a href="/TiVoConnect?' +
-                            'Command=NPL&amp;Container=' + quote(section) +  
+                            'Command=NPL&amp;Container=' + quote(section) +
                             '&amp;TiVo=' + config.tivos[tsn]['address'] +
                             '">' + config.tivos[tsn]['name'] +
                             '</a><br>')
