@@ -37,7 +37,7 @@ class ZCBroadcast:
         old_titles = self.scan()
         address = socket.inet_aton(config.get_ip())
         port = int(config.getPort())
-        logger.info('Announcing shares...')
+        logger.info('Announcing shares...({}:{})'.format(config.get_ip(), port))
         for section, settings in config.getShares():
             try:
                 ct = GetPlugin(settings['type']).CONTENT_TYPE
@@ -76,8 +76,12 @@ class ZCBroadcast:
         # Get the names of servers offering TiVo videos
         browser = zeroconf.ServiceBrowser(self.rz, VIDS, None, ZCListener(names))
 
-        # Give them a second to respond
-        time.sleep(1)
+        # Give them a few seconds to respond
+        max_sec_to_wait = 10
+        sec_waited = 0
+        while not names and sec_waited < max_sec_to_wait:
+            sec_waited += 1
+            time.sleep(1)
 
         # Any results?
         if names:
