@@ -20,10 +20,10 @@ class ZCListener:
     def __init__(self, names):
         self.names = names
 
-    def removeService(self, server, type, name):
+    def remove_service(self, server, type, name):
         self.names.remove(name.replace('.' + type, ''))
 
-    def addService(self, server, type, name):
+    def add_service(self, server, type, name):
         self.names.append(name.replace('.' + type, ''))
 
 class ZCBroadcast:
@@ -63,7 +63,7 @@ class ZCBroadcast:
                 info = zeroconf.ServiceInfo('_%s._tcp.local.' % tt,
                     '%s._%s._tcp.local.' % (title, tt),
                     address, port, 0, 0, desc)
-                self.rz.registerService(info)
+                self.rz.register_service(info)
                 self.share_info.append(info)
 
     def scan(self):
@@ -74,7 +74,7 @@ class ZCBroadcast:
         self.logger.info('Scanning for TiVos...')
 
         # Get the names of servers offering TiVo videos
-        browser = zeroconf.ServiceBrowser(self.rz, VIDS, ZCListener(names))
+        browser = zeroconf.ServiceBrowser(self.rz, VIDS, None, ZCListener(names))
 
         # Give them a second to respond
         time.sleep(1)
@@ -85,25 +85,25 @@ class ZCBroadcast:
 
         # Now get the addresses -- this is the slow part
         for name in names:
-            info = self.rz.getServiceInfo(VIDS, name + '.' + VIDS)
+            info = self.rz.get_service_info(VIDS, name + '.' + VIDS)
             if info:
                 tsn = info.properties.get('TSN')
                 if config.get_server('togo_all'):
                     tsn = info.properties.get('tsn', tsn)
                 if tsn:
-                    address = socket.inet_ntoa(info.getAddress())
-                    port = info.getPort()
-                    config.tivos[tsn] = {'name': name, 'address': address, 
+                    address = socket.inet_ntoa(info.address)
+                    port = info.port
+                    config.tivos[tsn] = {'name': name, 'address': address,
                                          'port': port}
                     config.tivos[tsn].update(info.properties)
-                    self.logger.info(name)
+                    self.logger.info("{} - {}".format(name, address))
 
         return names
 
     def shutdown(self):
         self.logger.info('Unregistering: %s' % ' '.join(self.share_names))
         for info in self.share_info:
-            self.rz.unregisterService(info)
+            self.rz.unregister_service(info)
         self.rz.close()
 
 class Beacon:
