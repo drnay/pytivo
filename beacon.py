@@ -159,7 +159,7 @@ class Beacon:
         for beacon_ip in beacon_ips.split():
             if beacon_ip != 'listen':
                 try:
-                    packet = beacon
+                    packet = bytes(beacon, "utf-8")
                     while packet:
                         result = self.UDPSock.sendto(packet, (beacon_ip, 2190))
                         if result < 0:
