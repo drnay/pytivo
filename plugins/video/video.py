@@ -27,7 +27,7 @@ CLASS_NAME = 'Video'
 
 # Preload the templates
 def tmpl(name):
-    return open(os.path.join(SCRIPTDIR, 'templates', name), 'rb').read()
+    return open(os.path.join(SCRIPTDIR, 'templates', name), 'rb').read().decode('utf-8')
 
 XML_CONTAINER_TEMPLATE = tmpl('container_xml.tmpl')
 TVBUS_TEMPLATE = tmpl('TvBus.tmpl')

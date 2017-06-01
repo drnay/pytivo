@@ -54,7 +54,7 @@ double check your <b>tivo_mak</b> setting.</p> <pre>%s</pre>"""
 
 # Preload the templates
 tnname = os.path.join(SCRIPTDIR, 'templates', 'npl.tmpl')
-NPL_TEMPLATE = open(tnname, 'rb').read()
+NPL_TEMPLATE = open(tnname, 'rb').read().decode('utf-8')
 
 mswindows = (sys.platform == "win32")
 

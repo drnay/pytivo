@@ -51,9 +51,9 @@ durre = re.compile(r'.*Duration: ([0-9]+):([0-9]+):([0-9]+)\.([0-9]+),').search
 tfname = os.path.join(SCRIPTDIR, 'templates', 'container.tmpl')
 tpname = os.path.join(SCRIPTDIR, 'templates', 'm3u.tmpl')
 iname = os.path.join(SCRIPTDIR, 'templates', 'item.tmpl')
-FOLDER_TEMPLATE = open(tfname, 'rb').read()
-PLAYLIST_TEMPLATE = open(tpname, 'rb').read()
-ITEM_TEMPLATE = open(iname, 'rb').read()
+FOLDER_TEMPLATE = open(tfname, 'rb').read().decode('utf-8')
+PLAYLIST_TEMPLATE = open(tpname, 'rb').read().decode('utf-8')
+ITEM_TEMPLATE = open(iname, 'rb').read().decode('utf-8')
 
 # XXX BIG HACK
 # subprocess is broken for me on windows so super hack
