@@ -51,9 +51,9 @@ durre = re.compile(r'.*Duration: ([0-9]+):([0-9]+):([0-9]+)\.([0-9]+),').search
 tfname = os.path.join(SCRIPTDIR, 'templates', 'container.tmpl')
 tpname = os.path.join(SCRIPTDIR, 'templates', 'm3u.tmpl')
 iname = os.path.join(SCRIPTDIR, 'templates', 'item.tmpl')
-FOLDER_TEMPLATE = file(tfname, 'rb').read()
-PLAYLIST_TEMPLATE = file(tpname, 'rb').read()
-ITEM_TEMPLATE = file(iname, 'rb').read()
+FOLDER_TEMPLATE = open(tfname, 'rb').read()
+PLAYLIST_TEMPLATE = open(tpname, 'rb').read()
+ITEM_TEMPLATE = open(iname, 'rb').read()
 
 # XXX BIG HACK
 # subprocess is broken for me on windows so super hack
@@ -69,7 +69,7 @@ def patchSubprocess():
 mswindows = (sys.platform == "win32")
 if mswindows:
     patchSubprocess()
-    
+
 class FileData:
     def __init__(self, name, isdir):
         self.name = name
@@ -251,7 +251,7 @@ class Music(Plugin):
                     fname = fname.encode('cp1252')
                 cmd = [ffmpeg_path, '-i', fname]
                 ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE,
-                                               stdout=subprocess.PIPE, 
+                                               stdout=subprocess.PIPE,
                                                stdin=subprocess.PIPE)
 
                 # wait 10 sec if ffmpeg is not back give up
@@ -418,7 +418,7 @@ class Music(Plugin):
                 self.unsorted = True
                 self.sortby = None
                 self.last_start = 0
- 
+
         def build_recursive_list(path, recurse=True):
             files = []
             path = str(path, 'utf-8')
@@ -484,7 +484,7 @@ class Music(Plugin):
         # Sort it
         seed = ''
         start = ''
-        sortby = query.get('SortOrder', ['Normal'])[0] 
+        sortby = query.get('SortOrder', ['Normal'])[0]
         if 'Random' in sortby:
             if 'RandomSeed' in query:
                 seed = query['RandomSeed'][0]

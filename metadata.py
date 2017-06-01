@@ -365,7 +365,7 @@ def from_text(full_path):
     for metafile in search_paths:
         if os.path.exists(metafile):
             sep = ':='[metafile.endswith('.properties')]
-            for line in file(metafile, 'U'):
+            for line in open(metafile, 'U'):
                 if line.startswith(BOM):
                     line = line[3:]
                 if line.strip().startswith('#') or not sep in line:
@@ -529,7 +529,7 @@ def _parse_nfo(nfo_path, nfo_data=None):
     # pyTivo only parses the XML metadata, but we'll try to stip the URL
     # from mixed XML/URL files.  Returns `None` when XML can't be parsed.
     if nfo_data is None:
-        nfo_data = [line.strip() for line in file(nfo_path, 'rU')]
+        nfo_data = [line.strip() for line in open(nfo_path, 'rU')]
     xmldoc = None
     try:
         xmldoc = minidom.parseString(os.linesep.join(nfo_data))

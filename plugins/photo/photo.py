@@ -12,14 +12,14 @@
 #                          mode always; allow larger thumbnails
 # Version 0.9,  Dec. 13 -- different sort types
 # Version 0.8,  Dec. 12 -- faster thumbnails, better quality full views
-# Version 0.7,  Dec. 11 -- fix missing item on thumbnail scroll up, 
+# Version 0.7,  Dec. 11 -- fix missing item on thumbnail scroll up,
 #                          better anchor and path handling
 # Version 0.6,  Dec. 10 -- cache recursive lookups for faster slide shows
 # Version 0.5,  Dec. 10 -- fix reboot problem by keeping directory names
 #                          (vs. contents) out of "Recurse=Yes" lists
 # Version 0.4,  Dec. 10 -- drop the use of playable_cache, add path
 #                          separator kludges for Windows
-# Version 0.3,  Dec. 8  -- revert to using PixelShape, workaround for 
+# Version 0.3,  Dec. 8  -- revert to using PixelShape, workaround for
 #                          Image.save() under Windows
 # Version 0.2,  Dec. 8  -- thumbnail caching, faster thumbnails
 # Version 0.1,  Dec. 7, 2007
@@ -72,13 +72,13 @@ ffmpeg_size = re.compile(r'.*Video: .+, (\d+)x(\d+)[, ].*')
 # Preload the template
 tname = os.path.join(SCRIPTDIR, 'templates', 'container.tmpl')
 iname = os.path.join(SCRIPTDIR, 'templates', 'item.tmpl')
-PHOTO_TEMPLATE = file(tname, 'rb').read()
-ITEM_TEMPLATE = file(iname, 'rb').read()
+PHOTO_TEMPLATE = open(tname, 'rb').read()
+ITEM_TEMPLATE = open(iname, 'rb').read()
 
 JFIF_TAG = '\xff\xe0\x00\x10JFIF\x00\x01\x02\x00\x00\x01\x00\x01\x00\x00'
 
 class Photo(Plugin):
-    
+
     CONTENT_TYPE = 'x-container/tivo-photos'
 
     class LockedLRUCache(LRUCache):
@@ -153,7 +153,7 @@ class Photo(Plugin):
 
             if orient:
                 exifrot = {
-                    1:   0, 
+                    1:   0,
                     2:   0,
                     3: 180,
                     4: 180,
@@ -369,10 +369,10 @@ class Photo(Plugin):
 
         # Build a new image
         if use_pil:
-            status, result = self.get_image_pil(path, width, height, 
+            status, result = self.get_image_pil(path, width, height,
                                                 pshape, rot, attrs)
         else:
-            status, result = self.get_image_ffmpeg(path, width, height, 
+            status, result = self.get_image_ffmpeg(path, width, height,
                                                    pshape, rot, attrs)
 
         if status:
@@ -540,7 +540,7 @@ class Photo(Plugin):
         # Sort it
         seed = ''
         start = ''
-        sortby = query.get('SortOrder', ['Normal'])[0] 
+        sortby = query.get('SortOrder', ['Normal'])[0]
         if 'Random' in sortby:
             if 'RandomSeed' in query:
                 seed = query['RandomSeed'][0]

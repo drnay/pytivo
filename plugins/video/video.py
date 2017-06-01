@@ -27,7 +27,7 @@ CLASS_NAME = 'Video'
 
 # Preload the templates
 def tmpl(name):
-    return file(os.path.join(SCRIPTDIR, 'templates', name), 'rb').read()
+    return open(os.path.join(SCRIPTDIR, 'templates', name), 'rb').read()
 
 XML_CONTAINER_TEMPLATE = tmpl('container_xml.tmpl')
 TVBUS_TEMPLATE = tmpl('TvBus.tmpl')
@@ -116,7 +116,7 @@ class Video(Plugin):
             size = os.path.getsize(fname) + len(thead)
             handler.send_response(200)
             handler.send_header('Content-Length', size - offset)
-            handler.send_header('Content-Range', 'bytes %d-%d/%d' % 
+            handler.send_header('Content-Range', 'bytes %d-%d/%d' %
                                 (offset, size - offset - 1, size))
         else:
             handler.send_response(206)
@@ -151,7 +151,7 @@ class Video(Plugin):
             else:
                 logger.debug('"%s" is not tivo compatible' % fname)
                 if offset:
-                    count = transcode.resume_transfer(path, handler.wfile, 
+                    count = transcode.resume_transfer(path, handler.wfile,
                                                       offset)
                 else:
                     count = transcode.transcode(False, path, handler.wfile,
@@ -168,7 +168,7 @@ class Video(Plugin):
             mega_elapsed = 1
         rate = count * 8.0 / mega_elapsed
         logger.info('[%s] Done sending "%s" to %s, %d bytes, %.2f Mb/s' %
-                    (time.strftime('%d/%b/%Y %H:%M:%S'), fname, 
+                    (time.strftime('%d/%b/%Y %H:%M:%S'), fname,
                      tivo_name, count, rate))
 
     def __duration(self, full_path):
@@ -279,7 +279,7 @@ class Video(Plugin):
                      'stopTime': (now + duration_delta).isoformat(),
                      'size': self.__est_size(full_path, tsn, mime),
                      'duration': duration,
-                     'iso_duration': ('P%sDT%sH%sM%sS' % 
+                     'iso_duration': ('P%sDT%sH%sM%sS' %
                           (duration_delta.days, hours, min, sec))})
 
         return data
@@ -366,7 +366,7 @@ class Video(Plugin):
             ext = os.path.splitext(file_path)[1].lower()
             if ext == '.tivo':
                 try:
-                    flag = file(file_path).read(8)
+                    flag = open(file_path).read(8)
                 except:
                     return False
                 if ord(flag[7]) & 0x20:
@@ -417,7 +417,7 @@ class Video(Plugin):
         blocklen = lc * 2 + 40
         padding = pad(blocklen, 1024)
 
-        return ''.join(['TiVo', struct.pack('>HHHLH', 4, flag, 0, 
+        return ''.join(['TiVo', struct.pack('>HHHLH', 4, flag, 0,
                                             padding + blocklen, 2),
                         struct.pack('>LLHH', lc + 12, ld, 1, 0),
                         chunk,

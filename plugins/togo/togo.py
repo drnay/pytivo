@@ -35,26 +35,26 @@ DEFPATH = '/TiVoConnect?Command=QueryContainer&Container=/NowPlaying'
 
 # Some error/status message templates
 
-MISSING = """<h3>Missing Data</h3> <p>You must set both "tivo_mak" and 
+MISSING = """<h3>Missing Data</h3> <p>You must set both "tivo_mak" and
 "togo_path" before using this function.</p>"""
 
-TRANS_QUEUE = """<h3>Queued for Transfer</h3> <p>%s</p> <p>queued for 
+TRANS_QUEUE = """<h3>Queued for Transfer</h3> <p>%s</p> <p>queued for
 transfer to:</p> <p>%s</p>"""
 
-TRANS_STOP = """<h3>Transfer Stopped</h3> <p>Your transfer of:</p> 
+TRANS_STOP = """<h3>Transfer Stopped</h3> <p>Your transfer of:</p>
 <p>%s</p> <p>has been stopped.</p>"""
 
-UNQUEUE = """<h3>Removed from Queue</h3> <p>%s</p> <p>has been removed 
+UNQUEUE = """<h3>Removed from Queue</h3> <p>%s</p> <p>has been removed
 from the queue.</p>"""
 
-UNABLE = """<h3>Unable to Connect to TiVo</h3> <p>pyTivo was unable to 
-connect to the TiVo at %s.</p> <p>This is most likely caused by an 
-incorrect Media Access Key. Please return to the Settings page and 
+UNABLE = """<h3>Unable to Connect to TiVo</h3> <p>pyTivo was unable to
+connect to the TiVo at %s.</p> <p>This is most likely caused by an
+incorrect Media Access Key. Please return to the Settings page and
 double check your <b>tivo_mak</b> setting.</p> <pre>%s</pre>"""
 
 # Preload the templates
 tnname = os.path.join(SCRIPTDIR, 'templates', 'npl.tmpl')
-NPL_TEMPLATE = file(tnname, 'rb').read()
+NPL_TEMPLATE = open(tnname, 'rb').read()
 
 mswindows = (sys.platform == "win32")
 
@@ -65,13 +65,13 @@ basic_meta = {} # Data from NPL, parsed, indexed by progam URL
 details_urls = {} # URLs for extended data, indexed by main URL
 
 def null_cookie(name, value):
-    return http.cookiejar.Cookie(0, name, value, None, False, '', False, 
+    return http.cookiejar.Cookie(0, name, value, None, False, '', False,
         False, '', False, False, None, False, None, None, None)
 
 auth_handler = urllib.request.HTTPPasswordMgrWithDefaultRealm()
 cj = http.cookiejar.CookieJar()
 cj.set_cookie(null_cookie('sid', 'ADEADDA7EDEBAC1E'))
-tivo_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj), 
+tivo_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj),
                                    urllib.request.HTTPBasicAuthHandler(auth_handler),
                                    urllib.request.HTTPDigestAuthHandler(auth_handler))
 
@@ -322,7 +322,7 @@ class ToGo(Plugin):
                 now = time.time()
                 elapsed = now - last_interval
                 if elapsed >= 5:
-                    status[url]['rate'] = '%.2f Mb/s' % (length * 8.0 / 
+                    status[url]['rate'] = '%.2f Mb/s' % (length * 8.0 /
                         (elapsed * 1024 * 1024))
                     status[url]['size'] += length
                     length = 0
