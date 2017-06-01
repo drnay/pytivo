@@ -86,5 +86,12 @@ Create a Python 3 virtual environment for py3tivo (see DigitalOcean's page)
 
 Install these python packages (with pip):
 - zeroconf
+- mutagen
+- cheetah3
+
+The required python packages are in `requirements.txt` and may be installed by running:
+
+    pip install -r requirements.txt
+
 
 
