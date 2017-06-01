@@ -8,7 +8,7 @@ import os
 import shutil
 import socket
 import time
-from io import StringIO
+from io import BytesIO
 from email.utils import formatdate
 from urllib.parse import unquote_plus, quote
 from xml.sax.saxutils import escape
@@ -280,7 +280,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         squeeze = (len(page) > 256 and mime.startswith('text') and
             'gzip' in self.headers.get('Accept-Encoding', ''))
         if squeeze:
-            out = StringIO()
+            out = BytesIO()
             gzip.GzipFile(mode='wb', fileobj=out).write(page)
             page = out.getvalue()
             out.close()
@@ -297,9 +297,15 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.flush()
 
     def send_xml(self, page):
+        if not isinstance(page, bytes):
+            page = bytes(page, 'utf-8')
+
         self.send_fixed(page, 'text/xml')
 
     def send_html(self, page, code=200, refresh=''):
+        if not isinstance(page, bytes):
+            page = bytes(page, 'utf-8')
+
         self.send_fixed(page, 'text/html; charset=utf-8', code, refresh)
 
     def root_container(self):
@@ -315,9 +321,8 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
                     tsncontainers.append((section, settings))
             except Exception as msg:
                 self.server.logger.error(section + ' - ' + str(msg))
-        t = Template(file=os.path.join(SCRIPTDIR, 'templates',
-                                       'root_container.tmpl'),
-                     filter=EncodeUnicode)
+        t = Template(file = os.path.join(SCRIPTDIR, 'templates',
+                                         'root_container.tmpl'))
         if self.server.beacon.bd:
             t.renamed = self.server.beacon.bd.renamed
         else:
@@ -329,9 +334,8 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.send_xml(str(t))
 
     def infopage(self):
-        t = Template(file=os.path.join(SCRIPTDIR, 'templates',
-                                       'info_page.tmpl'),
-                     filter=EncodeUnicode)
+        t = Template(file = os.path.join(SCRIPTDIR, 'templates',
+                                         'info_page.tmpl'))
         t.admin = ''
 
         if config.get_server('tivo_mak') and config.get_server('togo_path'):

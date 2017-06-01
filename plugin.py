@@ -37,7 +37,7 @@ class EncodeUnicode(Filter):
 
         encoding = kw.get('encoding', 'utf8')
 
-        if isinstance(val, str):
+        if isinstance(val, bytes):
             try:
                 val = val.decode('utf8')
             except:
@@ -87,8 +87,8 @@ class Plugin(object):
         return path
 
     def item_count(self, handler, query, cname, files, last_start=0):
-        """Return only the desired portion of the list, as specified by 
-           ItemCount, AnchorItem and AnchorOffset. 'files' is either a 
+        """Return only the desired portion of the list, as specified by
+           ItemCount, AnchorItem and AnchorOffset. 'files' is either a
            list of strings, OR a list of objects with a 'name' attribute.
         """
         def no_anchor(handler, anchor):
