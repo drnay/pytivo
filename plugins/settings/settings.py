@@ -6,7 +6,7 @@ from Cheetah.Template import Template
 
 from . import buildhelp
 import config
-from plugin import EncodeUnicode, Plugin
+from plugin import Plugin
 
 SCRIPTDIR = os.path.dirname(__file__)
 
@@ -27,14 +27,14 @@ Reset</b> or <b>Restart</b> before these changes will take effect.</p>"""
 
 # Preload the templates
 tsname = os.path.join(SCRIPTDIR, 'templates', 'settings.tmpl')
-SETTINGS_TEMPLATE = open(tsname, 'rb').read()
+SETTINGS_TEMPLATE = open(tsname, 'rb').read().decode('utf-8')
 
 class Settings(Plugin):
     CONTENT_TYPE = 'text/html'
 
     def Quit(self, handler, query):
         if hasattr(handler.server, 'shutdown'):
-            handler.send_fixed(GOODBYE_MSG, 'text/plain')
+            handler.send_fixed(bytes(GOODBYE_MSG, 'utf-8'), 'text/plain')
             if handler.server.in_service:
                 handler.server.stop = True
             else:
@@ -75,7 +75,7 @@ class Settings(Plugin):
                                         dict(config.config.items(section,
                                                                  raw=True))))
 
-        t = Template(SETTINGS_TEMPLATE, filter=EncodeUnicode)
+        t = Template(SETTINGS_TEMPLATE)
         t.mode = buildhelp.mode
         t.options = buildhelp.options
         t.container = handler.cname
