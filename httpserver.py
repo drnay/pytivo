@@ -10,7 +10,7 @@ import socket
 import time
 from io import BytesIO
 from email.utils import formatdate
-from urllib.parse import unquote_plus, quote
+from urllib.parse import unquote_plus, quote, parse_qs
 from xml.sax.saxutils import escape
 
 from Cheetah.Template import Template
@@ -117,7 +117,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
 
         if '?' in self.path:
             path, opts = self.path.split('?', 1)
-            query = cgi.parse_qs(opts)
+            query = parse_qs(opts)
         else:
             path = self.path
             query = {}
@@ -141,10 +141,15 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         ctype, pdict = cgi.parse_header(self.headers.get('content-type'))
         if ctype == 'multipart/form-data':
             query = cgi.parse_multipart(self.rfile, pdict)
+            # I'm not sure if this code works after the python3 conversion
+            # there may be some string/bytes issues. Saving settings does not
+            # come through here, I'm leaving this debugging line commented
+            # out for the time being -mjl 2017-06-01
+            #self.server.logger.info("POST query: {}".format(query))
         else:
             length = int(self.headers.get('content-length'))
-            qs = self.rfile.read(length)
-            query = cgi.parse_qs(qs, keep_blank_values=1)
+            qs = self.rfile.read(length).decode('utf-8')
+            query = parse_qs(qs, keep_blank_values=1)
         self.handle_query(query, tsn)
 
     def do_command(self, query, command, target, tsn):
