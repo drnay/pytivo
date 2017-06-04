@@ -7,7 +7,7 @@ import _thread
 import time
 import urllib.request, urllib.parse, urllib.error
 import zlib
-from UserDict import DictMixin
+from collections import UserDict
 from datetime import datetime, timedelta
 from xml.sax.saxutils import escape
 
@@ -74,7 +74,7 @@ class Video(Plugin):
 
     def send_file(self, handler, path, query):
         mime = 'video/x-tivo-mpeg'
-        tsn = handler.headers.getheader('tsn', '')
+        tsn = handler.headers.get('tsn', '')
         try:
             assert(tsn)
             tivo_name = config.tivos[tsn].get('name', tsn)
@@ -91,7 +91,7 @@ class Video(Plugin):
                       transcode.tivo_compatible(path, tsn, mime)[0])
 
         try:  # "bytes=XXX-"
-            offset = int(handler.headers.getheader('Range')[6:-1])
+            offset = int(handler.headers.get('Range')[6:-1])
         except:
             offset = 0
 
@@ -285,7 +285,7 @@ class Video(Plugin):
         return data
 
     def QueryContainer(self, handler, query):
-        tsn = handler.headers.getheader('tsn', '')
+        tsn = handler.headers.get('tsn', '')
         subcname = query['Container'][0]
 
         if not self.get_local_path(handler, query):
@@ -425,7 +425,7 @@ class Video(Plugin):
                         chunk, '\0' * padding])
 
     def TVBusQuery(self, handler, query):
-        tsn = handler.headers.getheader('tsn', '')
+        tsn = handler.headers.get('tsn', '')
         f = query['File'][0]
         path = self.get_local_path(handler, query)
         file_path = os.path.normpath(path + '/' + f)
@@ -434,46 +434,28 @@ class Video(Plugin):
 
         handler.send_xml(details)
 
-class VideoDetails(DictMixin):
+class VideoDetails(UserDict):
+    """
+    VideoDetails is a dictionary that contains all keys, those keys which haven't
+    been explicitly set will return a default value when accessed.
+    """
 
-    def __init__(self, d=None):
-        if d:
-            self.d = d
-        else:
-            self.d = {}
+    defaults = { 'showingBits' : '0',
+                 'displayMajorNumber' : '0',
+                 'displayMinorNumber' : '0',
+                 'isEpisode' : 'true',
+                 'colorCode' : '4',
+                 'showType' : ('SERIES', '5') }
 
     def __getitem__(self, key):
-        if key not in self.d:
-            self.d[key] = self.default(key)
-        return self.d[key]
+        if key not in self.data:
+            self.data[key] = self.default(key)
+        return self.data[key]
 
     def __contains__(self, key):
         return True
 
-    def __setitem__(self, key, value):
-        self.d[key] = value
-
-    def __delitem__(self):
-        del self.d[key]
-
-    def keys(self):
-        return list(self.d.keys())
-
-    def __iter__(self):
-        return self.d.__iter__()
-
-    def iteritems(self):
-        return iter(self.d.items())
-
     def default(self, key):
-        defaults = {
-            'showingBits' : '0',
-            'displayMajorNumber' : '0',
-            'displayMinorNumber' : '0',
-            'isEpisode' : 'true',
-            'colorCode' : '4',
-            'showType' : ('SERIES', '5')
-        }
         if key in defaults:
             return defaults[key]
         elif key.startswith('v'):
