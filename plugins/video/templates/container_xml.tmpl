@@ -7,7 +7,7 @@
         <ContentType>x-tivo-container/folder</ContentType>
         <SourceFormat>x-tivo-container/folder</SourceFormat>
         <TotalItems>$total</TotalItems>
-        <UniqueId>$crc($guid + $name)</UniqueId>
+        <UniqueId>$crc(bytes($guid + $name, 'utf-8'))</UniqueId>
     </Details>
     #for $video in $videos
     #if $video.is_dir
@@ -16,7 +16,7 @@
             <Title>$escape($video.title)</Title>
             <ContentType>x-tivo-container/tivo-videos</ContentType>
             <SourceFormat>x-tivo-container/folder</SourceFormat>
-            <UniqueId>$crc($guid + $video.small_path)</UniqueId>
+            <UniqueId>$crc(bytes($guid + $video.small_path, 'utf-8'))</UniqueId>
             <TotalItems>$video.total_items</TotalItems>
             <LastCaptureDate>$video.captureDate</LastCaptureDate> 
         </Details>

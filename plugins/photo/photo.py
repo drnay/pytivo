@@ -50,7 +50,7 @@ except ImportError:
 import config
 from Cheetah.Template import Template
 from lrucache import LRUCache
-from plugin import EncodeUnicode, Plugin, quote, unquote
+from plugin import Plugin, quote, unquote
 from plugins.video.transcode import kill
 
 SCRIPTDIR = os.path.dirname(__file__)
@@ -171,7 +171,7 @@ class Photo(Plugin):
     def get_image_pil(self, path, width, height, pshape, rot, attrs):
         # Load
         try:
-            pic = Image.open(str(path, 'utf-8'))
+            pic = Image.open(path)
         except Exception as msg:
             return False, 'Could not open %s -- %s' % (path, msg)
 
@@ -261,7 +261,7 @@ class Photo(Plugin):
         if not ffmpeg_path:
             return False, 'FFmpeg not found'
 
-        fname = str(path, 'utf-8')
+        fname = path
         if sys.platform == 'win32':
             fname = fname.encode('cp1252')
 
@@ -423,7 +423,7 @@ class Photo(Plugin):
             self.media_data_cache[f.name] = item
             return item
 
-        t = Template(PHOTO_TEMPLATE, filter=EncodeUnicode)
+        t = Template(PHOTO_TEMPLATE)
         t.name = query['Container'][0]
         t.container = handler.cname
         t.files, t.total, t.start = self.get_files(handler, query,
@@ -440,7 +440,7 @@ class Photo(Plugin):
         path = os.path.join(handler.container['path'], *splitpath[1:])
 
         if path in self.media_data_cache:
-            t = Template(ITEM_TEMPLATE, filter=EncodeUnicode)
+            t = Template(ITEM_TEMPLATE)
             t.file = self.media_data_cache[path]
             t.escape = escape
             handler.send_xml(str(t))
@@ -453,7 +453,7 @@ class Photo(Plugin):
             def __init__(self, name, isdir):
                 self.name = name
                 self.isdir = isdir
-                st = os.stat(str(name, 'utf-8'))
+                st = os.stat(name)
                 self.cdate = st.st_ctime
                 self.mdate = st.st_mtime
 
@@ -473,7 +473,6 @@ class Photo(Plugin):
 
         def build_recursive_list(path, recurse=True):
             files = []
-            path = str(path, 'utf-8')
             try:
                 for f in os.listdir(path):
                     if f.startswith('.'):
@@ -520,7 +519,7 @@ class Photo(Plugin):
             if path in rc:
                 filelist = rc[path]
         else:
-            updated = os.path.getmtime(str(path, 'utf-8'))
+            updated = os.path.getmtime(path)
             if path in dc and dc.mtime(path) >= updated:
                 filelist = dc[path]
             for p in rc:

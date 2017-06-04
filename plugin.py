@@ -7,6 +7,8 @@ import time
 import unicodedata
 import urllib.request, urllib.parse, urllib.error
 
+from functools import cmp_to_key
+from operator import attrgetter
 from Cheetah.Filters import Filter
 from lrucache import LRUCache
 
@@ -26,9 +28,10 @@ def GetPlugin(name):
         module = __import__(module_name, globals(), locals(), name)
         plugin = getattr(module, module.CLASS_NAME)()
         return plugin
-    except ImportError:
+    except ImportError as e:
         print('Error no', name, 'plugin exists. Check the type ' \
         'setting for your share.')
+        print(e)
         return Error
 
 class EncodeUnicode(Filter):
@@ -70,7 +73,7 @@ class Plugin(object):
         pass
 
     def send_file(self, handler, path, query):
-        handler.send_content_file(str(path, 'utf-8'))
+        handler.send_content_file(path)
 
     def get_local_base_path(self, handler, query):
         return os.path.normpath(handler.container['path'])
@@ -147,7 +150,7 @@ class Plugin(object):
             def __init__(self, name, isdir):
                 self.name = name
                 self.isdir = isdir
-                st = os.stat(str(name, 'utf-8'))
+                st = os.stat(name)
                 self.mdate = st.st_mtime
                 self.size = st.st_size
 
@@ -160,7 +163,6 @@ class Plugin(object):
 
         def build_recursive_list(path, recurse=True):
             files = []
-            path = str(path, 'utf-8')
             try:
                 for f in os.listdir(path):
                     if f.startswith('.'):
@@ -169,7 +171,6 @@ class Plugin(object):
                     isdir = os.path.isdir(f)
                     if sys.platform == 'darwin':
                         f = unicodedata.normalize('NFC', f)
-                    f = f.encode('utf-8')
                     if recurse and isdir:
                         files.extend(build_recursive_list(f))
                     else:
@@ -193,7 +194,7 @@ class Plugin(object):
             if path in rc and rc.mtime(path) + 300 >= time.time():
                 filelist = rc[path]
         else:
-            updated = os.path.getmtime(str(path, 'utf-8'))
+            updated = os.path.getmtime(path)
             if path in dc and dc.mtime(path) >= updated:
                 filelist = dc[path]
             for p in rc:
@@ -208,26 +209,20 @@ class Plugin(object):
             else:
                 dc[path] = filelist
 
-        def dir_sort(x, y):
+        def dir_cmp(x, y):
             if x.isdir == y.isdir:
-                return name_sort(x, y)
+                return cmp(x.name, y.name)
             else:
                 return y.isdir - x.isdir
-
-        def name_sort(x, y):
-            return cmp(x.name, y.name)
-
-        def date_sort(x, y):
-            return cmp(y.mdate, x.mdate)
 
         sortby = query.get('SortOrder', ['Normal'])[0]
         if filelist.unsorted or filelist.sortby != sortby:
             if force_alpha:
-                filelist.files.sort(dir_sort)
+                filelist.files.sort(key = cmp_to_key(dir_cmp))
             elif sortby == '!CaptureDate':
-                filelist.files.sort(date_sort)
+                filelist.files.sort(key = attrgetter('mdate'), reverse = True)
             else:
-                filelist.files.sort(name_sort)
+                filelist.files.sort(key = attrgetter('name'))
 
             filelist.sortby = sortby
             filelist.unsorted = False

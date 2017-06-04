@@ -17,7 +17,7 @@ from lrucache import LRUCache
 import config
 import metadata
 from . import transcode
-from plugin import EncodeUnicode, Plugin, quote
+from plugin import Plugin, quote
 
 logger = logging.getLogger('pyTivo.video.video')
 
@@ -65,7 +65,7 @@ class Video(Plugin):
     tvbus_cache = LRUCache(1)
 
     def video_file_filter(self, full_path, type=None):
-        if os.path.isdir(str(full_path, 'utf-8')):
+        if os.path.isdir(full_path):
             return True
         if use_extensions:
             return os.path.splitext(full_path)[1].lower() in EXTENSIONS
@@ -158,7 +158,7 @@ class Video(Plugin):
                                                 tsn, mime, thead)
         try:
             if not compatible:
-                 handler.wfile.write('0\r\n\r\n')
+                 handler.wfile.write(b'0\r\n\r\n')
             handler.wfile.flush()
         except Exception as msg:
             logger.info(msg)
@@ -348,7 +348,7 @@ class Video(Plugin):
 
             videos.append(video)
 
-        t = Template(XML_CONTAINER_TEMPLATE, filter=EncodeUnicode)
+        t = Template(XML_CONTAINER_TEMPLATE)
         t.container = handler.cname
         t.name = subcname
         t.total = total
@@ -388,7 +388,7 @@ class Video(Plugin):
             if file_info['valid']:
                 file_info.update(self.metadata_full(file_path, tsn))
 
-            t = Template(TVBUS_TEMPLATE, filter=EncodeUnicode)
+            t = Template(TVBUS_TEMPLATE)
             t.video = file_info
             t.escape = escape
             t.get_tv = metadata.get_tv
