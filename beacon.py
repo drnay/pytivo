@@ -29,32 +29,40 @@ def bytes2str(data):
     if isinstance(data, tuple):  return map(bytes2str, data)
     return data
 
-def log_tivo_serviceinfo(logger, info):
+def log_serviceinfo(logger, info):
     """
-    Write interesting attributes from a tivo ServiceInfo to the log.
-    Handle both the ServiceInfo from a TiVo and the one used by pyTivo.
+    Write interesting attributes from a ServiceInfo to the log.
+    Information written depends on the log level, basic info
+    is written w/ log level INFO, if the log level is DEBUG
+    more the basic info plus more (all properties) is written
+    w/ log level DEBUG.
     """
 
     try:
+        debugging = logger.isEnabledFor(logging.DEBUG)
+        log_level = logging.INFO
+
         log_info = { 'name': info.name,
                      'address': socket.inet_ntoa(info.address),
-                     'port': info.port,
-                     'server': info.server,
-                     'platform': info.properties[b'platform'],
-                     'swversion': info.properties[b'swversion'] if b'swversion' in info.properties else '',
-                     'path': info.properties[b'path'],
-                     'TSN': info.properties[b'TSN'] if b'TSN' in info.properties \
-                            else info.properties[b'tsn'] if b'tsn' in info.properties else '',
-                   }
-        logger.info("\n  {address}:{port} {name}\n"
-                         "    server: {server}\n"
-                         "    Properties:\n"
-                         "      platform: {platform} swversion: {swversion}\n"
-                         "      TSN: {TSN}\n"
-                         "      path: {path}\n".format(**log_info))
+                     'port': info.port }
+        log_hdr = "\n  {address}:{port} {name}\n"
+        log_fmt = log_hdr
 
-    except Exception as e:
-        logger.error("log_tivo_serviceinfo failed with: {}".format(e))
+        if debugging:
+            log_level = logging.DEBUG
+            if info.server != info.name:
+                log_info['server'] = info.server
+                log_fmt += "    server: {server}\n"
+
+            for (k, v) in info.properties.items():
+                li_k = "prop_" + bytes2str(k)
+                log_info[li_k] = v
+                log_fmt += "    {k}: {{{li_k}}}\n".format(k = k, li_k = li_k)
+
+        logger.log(log_level, log_fmt.format(**log_info))
+
+    except:
+        logger.exception("exception in log_tivo_serviceinfo")
 
 
 class ZCListener:
@@ -114,7 +122,7 @@ class ZCBroadcast:
                                             '%s._%s._tcp.local.' % (title, tt),
                                             address, port, 0, 0, desc)
 
-                log_tivo_serviceinfo(self.logger, info)
+                log_serviceinfo(self.logger, info)
                 self.rz.register_service(info)
                 self.share_info.append(info)
 
@@ -144,17 +152,19 @@ class ZCBroadcast:
         # Now get the addresses -- this is the slow part
         for name in names:
             info = self.rz.get_service_info(VIDS, name + '.' + VIDS)
-            log_tivo_serviceinfo(self.logger, info)
+            log_serviceinfo(self.logger, info)
 
             if info:
                 tsn = info.properties.get(b'TSN')
                 if config.get_server('togo_all'):
                     tsn = info.properties.get(b'tsn', tsn)
                 if tsn:
+                    if isinstance(tsn, bytes):
+                        tsn = tsn.decode('utf-8')
                     address = socket.inet_ntoa(info.address)
                     port = info.port
-                    config.tivos[tsn] = {'name': name, 'address': address,
-                                         'port': port}
+                    config.tivos[tsn] = { 'name': name, 'address': address,
+                                          'port': port }
                     # info.properties has bytes keys and values, but we'd rather
                     # deal with str keys and values, so convert them before adding
                     # them to our tivos dict.
