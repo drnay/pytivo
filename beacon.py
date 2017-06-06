@@ -16,6 +16,47 @@ SHARE_TEMPLATE = '/TiVoConnect?Command=QueryContainer&Container=%s'
 PLATFORM_MAIN = 'pyTivo'
 PLATFORM_VIDEO = 'pc/pyTivo'    # For the nice icon
 
+
+# It's possible this function should live somewhere else, but for now this
+# is the only module that needs it. -mjl
+def bytes2str(data):
+    """
+    Convert bytes to str as utf-8. sequence values (and keys) will also be converted.
+    """
+
+    if isinstance(data, bytes):  return data.decode('utf-8')
+    if isinstance(data, dict):   return dict(map(bytes2str, data.items()))
+    if isinstance(data, tuple):  return map(bytes2str, data)
+    return data
+
+def log_tivo_serviceinfo(logger, info):
+    """
+    Write interesting attributes from a tivo ServiceInfo to the log.
+    Handle both the ServiceInfo from a TiVo and the one used by pyTivo.
+    """
+
+    try:
+        log_info = { 'name': info.name,
+                     'address': socket.inet_ntoa(info.address),
+                     'port': info.port,
+                     'server': info.server,
+                     'platform': info.properties[b'platform'],
+                     'swversion': info.properties[b'swversion'] if b'swversion' in info.properties else '',
+                     'path': info.properties[b'path'],
+                     'TSN': info.properties[b'TSN'] if b'TSN' in info.properties \
+                            else info.properties[b'tsn'] if b'tsn' in info.properties else '',
+                   }
+        logger.info("\n  {address}:{port} {name}\n"
+                         "    server: {server}\n"
+                         "    Properties:\n"
+                         "      platform: {platform} swversion: {swversion}\n"
+                         "      TSN: {TSN}\n"
+                         "      path: {path}\n".format(**log_info))
+
+    except Exception as e:
+        logger.error("log_tivo_serviceinfo failed with: {}".format(e))
+
+
 class ZCListener:
     def __init__(self, names):
         self.names = names
@@ -37,46 +78,59 @@ class ZCBroadcast:
         old_titles = self.scan()
         address = socket.inet_aton(config.get_ip())
         port = int(config.getPort())
-        logger.info('Announcing shares...({}:{})'.format(config.get_ip(), port))
+        logger.info('Announcing pytivo shares ({}:{})...'.format(config.get_ip(), port))
         for section, settings in config.getShares():
             try:
                 ct = GetPlugin(settings['type']).CONTENT_TYPE
             except:
                 continue
+
             if ct.startswith('x-container/'):
                 if 'video' in ct:
                     platform = PLATFORM_VIDEO
                 else:
                     platform = PLATFORM_MAIN
+
                 logger.info('Registering: %s' % section)
                 self.share_names.append(section)
-                desc = {'path': SHARE_TEMPLATE % quote(section),
-                        'platform': platform, 'protocol': 'http',
-                        'tsn': '{%s}' % uuid.uuid4()}
+
+                desc = { b'path': bytes(SHARE_TEMPLATE % quote(section), 'utf-8'),
+                         b'platform': bytes(platform, 'utf-8'),
+                         b'protocol': b'http',
+                         b'tsn': bytes('{%s}' % uuid.uuid4(), 'utf-8') }
                 tt = ct.split('/')[1]
                 title = section
                 count = 1
                 while title in old_titles:
+                    # debugging info while I try to figure out what this loop is for
+                    logger.info(" title b4: {}".format(title))
                     count += 1
                     title = '%s [%d]' % (section, count)
                     self.renamed[section] = title
+                    # more debugging info
+                    logger.info(" title after: {}\n section: {}".format(title, section))
+
                 info = zeroconf.ServiceInfo('_%s._tcp.local.' % tt,
-                    '%s._%s._tcp.local.' % (title, tt),
-                    address, port, 0, 0, desc)
+                                            '%s._%s._tcp.local.' % (title, tt),
+                                            address, port, 0, 0, desc)
+
+                log_tivo_serviceinfo(self.logger, info)
                 self.rz.register_service(info)
                 self.share_info.append(info)
+
 
     def scan(self):
         """ Look for TiVos using Zeroconf. """
         VIDS = '_tivo-videos._tcp.local.'
         names = []
 
-        self.logger.info('Scanning for TiVos...')
+        self.logger.info('Scanning for TiVos...\n')
 
         # Get the names of servers offering TiVo videos
         browser = zeroconf.ServiceBrowser(self.rz, VIDS, None, ZCListener(names))
 
-        # Give them a few seconds to respond
+        # Give them a second (or more if no one has responded in the 1st second) to respond
+        time.sleep(1)
         max_sec_to_wait = 10
         sec_waited = 0
         while not names and sec_waited < max_sec_to_wait:
@@ -90,17 +144,31 @@ class ZCBroadcast:
         # Now get the addresses -- this is the slow part
         for name in names:
             info = self.rz.get_service_info(VIDS, name + '.' + VIDS)
+            log_tivo_serviceinfo(self.logger, info)
+
             if info:
-                tsn = info.properties.get('TSN')
+                tsn = info.properties.get(b'TSN')
                 if config.get_server('togo_all'):
-                    tsn = info.properties.get('tsn', tsn)
+                    tsn = info.properties.get(b'tsn', tsn)
                 if tsn:
                     address = socket.inet_ntoa(info.address)
                     port = info.port
                     config.tivos[tsn] = {'name': name, 'address': address,
                                          'port': port}
-                    config.tivos[tsn].update(info.properties)
-                    self.logger.info("{} - {}".format(name, address))
+                    # info.properties has bytes keys and values, but we'd rather
+                    # deal with str keys and values, so convert them before adding
+                    # them to our tivos dict.
+                    config.tivos[tsn].update(bytes2str(info.properties))
+
+# Debugging information on what services have been found:
+#        try:
+#            all_services = zeroconf.ZeroconfServiceTypes.find(self.rz)
+#            self.logger.info("All services found")
+#            for s in all_services:
+#                self.logger.info("  {}".format(s))
+#        except Exception as e:
+#            self.logger.error(e)
+
 
         return names
 
