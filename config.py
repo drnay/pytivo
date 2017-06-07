@@ -182,7 +182,7 @@ def getShares(tsn=''):
 
     if get_server('nosettings', 'false').lower() in ['false', 'no', 'off']:
         shares.append(('Settings', {'type': 'settings'}))
-    if get_server('tivo_mak') and get_server('togo_path'):    
+    if get_server('tivo_mak') and get_server('togo_path'):
         shares.append(('ToGo', {'type': 'togo'}))
 
     return shares
@@ -347,13 +347,13 @@ def get_section(tsn):
 
 def get_tsn(name, tsn=None, raw=False):
     try:
-        return config.get('_tivo_' + tsn, name, raw)
+        return config.get('_tivo_' + tsn, name, raw=raw)
     except:
         try:
-            return config.get(get_section(tsn), name, raw)
+            return config.get(get_section(tsn), name, raw=raw)
         except:
             try:
-                return config.get('Server', name, raw)
+                return config.get('Server', name, raw=raw)
             except:
                 return None
 
