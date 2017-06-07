@@ -279,7 +279,7 @@ class ToGo(Plugin):
                 handle.close()
             except:
                 pass
-            metafile = open(outfile + '.txt', 'w')
+            metafile = open(outfile + '.txt', 'w', encoding='utf-8')
             metadata.dump(metafile, meta)
             metafile.close()
 
