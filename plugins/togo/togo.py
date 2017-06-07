@@ -7,7 +7,6 @@ import sys
 import _thread
 import time
 import urllib.request, urllib.error, urllib.parse
-import urllib.parse
 from urllib.parse import quote, unquote
 from xml.dom import minidom
 
@@ -15,7 +14,7 @@ from Cheetah.Template import Template
 
 import config
 import metadata
-from plugin import EncodeUnicode, Plugin
+from plugin import Plugin
 
 logger = logging.getLogger('pyTivo.togo')
 tag_data = metadata.tag_data
@@ -58,11 +57,11 @@ NPL_TEMPLATE = open(tnname, 'rb').read().decode('utf-8')
 
 mswindows = (sys.platform == "win32")
 
-status = {} # Global variable to control download threads
-tivo_cache = {} # Cache of TiVo NPL
-queue = {} # Recordings to download -- list per TiVo
-basic_meta = {} # Data from NPL, parsed, indexed by progam URL
-details_urls = {} # URLs for extended data, indexed by main URL
+status = {}         # Global variable to control download threads
+tivo_cache = {}     # Cache of TiVo NPL
+queue = {}          # Recordings to download -- list per TiVo
+basic_meta = {}     # Data from NPL, parsed, indexed by progam URL
+details_urls = {}   # URLs for extended data, indexed by main URL
 
 def null_cookie(name, value):
     return http.cookiejar.Cookie(0, name, value, None, False, '', False,
@@ -72,8 +71,8 @@ auth_handler = urllib.request.HTTPPasswordMgrWithDefaultRealm()
 cj = http.cookiejar.CookieJar()
 cj.set_cookie(null_cookie('sid', 'ADEADDA7EDEBAC1E'))
 tivo_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj),
-                                   urllib.request.HTTPBasicAuthHandler(auth_handler),
-                                   urllib.request.HTTPDigestAuthHandler(auth_handler))
+                                          urllib.request.HTTPBasicAuthHandler(auth_handler),
+                                          urllib.request.HTTPDigestAuthHandler(auth_handler))
 
 tsn = config.get_server('togo_tsn')
 if tsn:
@@ -138,9 +137,10 @@ class ToGo(Plugin):
 
             if (theurl not in tivo_cache or
                 (time.time() - tivo_cache[theurl]['thepage_time']) >= 60):
-                # if page is not cached or old then retreive it
+                # if page is not cached or old then retrieve it
                 auth_handler.add_password('TiVo DVR', ip_port, 'tivo', tivo_mak)
                 try:
+                    logger.debug("NPL.theurl: {}".format(theurl))
                     page = self.tivo_open(theurl)
                 except IOError as e:
                     handler.redir(UNABLE % (tivoIP, cgi.escape(str(e))), 10)
@@ -219,7 +219,7 @@ class ToGo(Plugin):
             ItemCount = 0
             title = ''
 
-        t = Template(NPL_TEMPLATE, filter=EncodeUnicode)
+        t = Template(NPL_TEMPLATE)
         t.quote = quote
         t.folder = folder
         t.status = status
@@ -244,9 +244,11 @@ class ToGo(Plugin):
         # global status
         status[url].update({'running': True, 'queued': False})
 
+        logger.debug("get_tivo_file(\ntivoIP={},\nurl={},\nmak={},\ntogo_path={})" \
+                     .format(tivoIP, url, mak, togo_path))
         parse_url = urllib.parse.urlparse(url)
 
-        name = str(unquote(parse_url[2]), 'utf-8').split('/')[-1].split('.')
+        name = unquote(parse_url[2]).split('/')[-1].split('.')
         try:
             id = unquote(parse_url[4]).split('id=')[1]
             name.insert(-1, ' - ' + id)
@@ -389,8 +391,7 @@ class ToGo(Plugin):
                 logger.info('[%s] Queued "%s" for transfer to %s' %
                             (time.strftime('%d/%b/%Y %H:%M:%S'),
                              unquote(theurl), togo_path))
-            urlstring = '<br>'.join([str(unquote(x), 'utf-8')
-                                     for x in urls])
+            urlstring = '<br>'.join([unquote(x) for x in urls])
             message = TRANS_QUEUE % (urlstring, togo_path)
         else:
             message = MISSING
