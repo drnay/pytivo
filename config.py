@@ -37,6 +37,8 @@ def init(argv, in_service=False):
         config_files = [os.path.join(os.environ['ALLUSERSPROFILE'], 'pyTivo', 'pyTivo.conf')]
     elif 'APPDATA' in os.environ:
         config_files = [os.path.join(os.environ['APPDATA'], 'pyTivo', 'pyTivo.conf')]
+    else:
+        config_files = []
 
     config_files += ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
 
@@ -201,7 +203,7 @@ def getShares(tsn=''):
 
     if get_server('nosettings', 'false').lower() in ['false', 'no', 'off']:
         shares.append(('Settings', {'type': 'settings'}))
-    if get_server('tivo_mak') and get_server('togo_path'):    
+    if get_server('tivo_mak') and get_server('togo_path'):
         shares.append(('ToGo', {'type': 'togo'}))
 
     if getattr(sys, 'frozen', False):
