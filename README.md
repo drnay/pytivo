@@ -93,5 +93,46 @@ The required python packages are in `requirements.txt` and may be installed by r
 
     pip install -r requirements.txt
 
+## Development TODO
+
+### Python 3 conversion
+
+- Start from latest code in wmcbrine's pytivo repository
+- run 2to3 over all files
+- replace local Cheetah copy by using `pip install Cheetah3`
+- replace local mutagen copy by using `pip install mutagen`
+- replace local zeroconf copy by using `pip install zeroconf`
+- start fixing Python 3 conversion issues that 2to3 didn't catch as they manifest
+    - many str/bytes issues
+    - seems Cheetah3 raises `NameMapper.NotFound: cannot find 'size' while searching for 'video.size'`
+      while the old one silently replaced the missing attribute with nothing
 
 
+Most important functionality (for me)
+
+- togo: be able to download videos in TS from TiVos
+- pull: Pull video from pyTivo share to TiVo
+
+I've never used the music & picture sharing functionality so I'm not even sure at
+this point how to test them.
+
+Next:
+
+- Merge in desired changes from Dan203's [fork][dan203 pytivo]
+- [Pre-compile][cheetah compile] the Cheetah templates [sample makefile][cheetah makefile tip]
+- see if it makes sense to replace `lrucache.py` with [`@functools.lru_cache`][lru_cache] decorator
+- see if it makes sense to replace [`urllib.request`][py3 urllib.request] with the
+  [Requests package][py3 requests pkg].
+- update the use of [configparser][py3 configparser] because [Legacy API Ex.][py3 config legacy]
+  says "...mapping protocol access is preferred for new projects."
+- enhance web UI (not even sure what that means yet)
+- Add something like kmttg's naming for saving togo files
+
+[cheetah makefile tip]: <https://pythonhosted.org/Cheetah/users_guide/tipsAndTricks.html#makefiles>
+[cheetah compile]: <https://pythonhosted.org/Cheetah/recipes/precompiled.html>
+[dan203 pytivo]: <https://github.com/Dan203/pytivo> "Dan Haddix's pytivo fork on github"
+[lru_cache]: <https://docs.python.org/3/library/functools.html>
+[py3 urllib.request]: <https://docs.python.org/3/library/urllib.request.html?highlight=request#module-urllib.request>
+[py3 requests pkg]: <http://docs.python-requests.org/en/master/>
+[py3 configparser]: <https://docs.python.org/3/library/configparser.html?highlight=configparser#module-configparser>
+[py3 config legacy]: <https://docs.python.org/3/library/configparser.html?highlight=configparser#legacy-api-examples>
