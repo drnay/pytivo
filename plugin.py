@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 import unicodedata
+import logging
 import urllib.request, urllib.parse, urllib.error
 
 from functools import cmp_to_key
@@ -53,6 +54,8 @@ class EncodeUnicode(Filter):
         return val.encode(encoding)
 
 class Plugin(object):
+
+    logger = logging.getLogger('pyTivo.Plugin')
 
     random_lock = threading.Lock()
 
@@ -154,6 +157,9 @@ class Plugin(object):
                 self.mdate = st.st_mtime
                 self.size = st.st_size
 
+            def __repr__(self):
+                return "FileData({}, {})".format(self.name, self.isdir)
+
         class SortList:
             def __init__(self, files):
                 self.files = files
@@ -179,6 +185,8 @@ class Plugin(object):
             except:
                 pass
             return files
+
+        self.logger.debug("get_files: query= {}".format(query));
 
         subcname = query['Container'][0]
         path = self.get_local_path(handler, query)
@@ -211,7 +219,11 @@ class Plugin(object):
 
         def dir_cmp(x, y):
             if x.isdir == y.isdir:
-                return cmp(x.name, y.name)
+                if x.name < y.name:
+                    return -1
+                if x.name == y.name:
+                    return 0
+                return 1
             else:
                 return y.isdir - x.isdir
 

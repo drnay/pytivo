@@ -108,7 +108,7 @@ class Video(Plugin):
         #faking = (mime in ['video/x-tivo-mpeg-ts', 'video/x-tivo-mpeg'] and
         faking = (mime == 'video/x-tivo-mpeg' and
                   not (is_tivo_file and compatible))
-        fname = str(path, 'utf-8')
+        fname = path
         thead = ''
         if faking:
             thead = self.tivo_header(tsn, path, mime)
@@ -177,19 +177,17 @@ class Video(Plugin):
     def __total_items(self, full_path):
         count = 0
         try:
-            full_path = str(full_path, 'utf-8')
             for f in os.listdir(full_path):
                 if f.startswith('.'):
                     continue
                 f = os.path.join(full_path, f)
-                f2 = f.encode('utf-8')
                 if os.path.isdir(f):
                     count += 1
                 elif use_extensions:
-                    if os.path.splitext(f2)[1].lower() in EXTENSIONS:
+                    if os.path.splitext(f)[1].lower() in EXTENSIONS:
                         count += 1
-                elif f2 in transcode.info_cache:
-                    if transcode.supported_format(f2):
+                elif f in transcode.info_cache:
+                    if transcode.supported_format(f):
                         count += 1
         except:
             pass
@@ -199,7 +197,7 @@ class Video(Plugin):
         # Size is estimated by taking audio and video bit rate adding 2%
 
         if transcode.tivo_compatible(full_path, tsn, mime)[0]:
-            return os.path.getsize(str(full_path, 'utf-8'))
+            return os.path.getsize(full_path)
         else:
             # Must be re-encoded
             audioBPS = config.getMaxAudioBR(tsn) * 1000
@@ -214,9 +212,9 @@ class Video(Plugin):
         vInfo = transcode.video_info(full_path)
 
         if ((int(vInfo['vHeight']) >= 720 and
-             config.getTivoHeight >= 720) or
+             config.getTivoHeight(tsn) >= 720) or
             (int(vInfo['vWidth']) >= 1280 and
-             config.getTivoWidth >= 1280)):
+             config.getTivoWidth(tsn) >= 1280)):
             data['showingBits'] = '4096'
 
         data.update(metadata.basic(full_path, mtime))
@@ -253,7 +251,7 @@ class Video(Plugin):
         if 'time' in data:
             if data['time'].lower() == 'file':
                 if not mtime:
-                    mtime = os.path.getmtime(str(full_path, 'utf-8'))
+                    mtime = os.path.getmtime(full_path)
                 try:
                     now = datetime.utcfromtimestamp(mtime)
                 except:
@@ -273,6 +271,13 @@ class Video(Plugin):
         sec = duration_delta.seconds % 60
         hours = min / 60
         min = min % 60
+
+        try:
+            test_size = self.__est_size(full_path, tsn, mime)
+            logger.debug("self.__est_size({}, {}, {}) = {}".format(full_path, tsn, mime, test_size))
+        except:
+            logger.debug("self.__est_size({}, {}, {}) = {}".format(full_path, tsn, mime, 'failed'))
+            logger.exception("getting size")
 
         data.update({'time': now.isoformat(),
                      'startTime': now.isoformat(),
@@ -306,13 +311,14 @@ class Video(Plugin):
 
         videos = []
         local_base_path = self.get_local_base_path(handler, query)
+        #logger.debug("\nquery={}\nfiles={}\n".format(query, files))
         for f in files:
             video = VideoDetails()
             mtime = f.mdate
             try:
                 ltime = time.localtime(mtime)
             except:
-                logger.warning('Bad file time on ' + str(f.name, 'utf-8'))
+                logger.warning('Bad file time on ' + f.name)
                 mtime = time.time()
                 ltime = time.localtime(mtime)
             video['captureDate'] = hex(int(mtime))
@@ -328,6 +334,10 @@ class Video(Plugin):
                 video['small_path'] = subcname + '/' + video['name']
                 video['total_items'] = self.__total_items(f.name)
             else:
+                # We must return the full metadata on a request for a specific
+                # file, but it's not needed for info on files in a directory
+                # however, if we've already got the "hard" transcode info
+                # we might as well give back the full metadata.
                 if len(files) == 1 or f.name in transcode.info_cache:
                     video['valid'] = transcode.supported_format(f.name)
                     if video['valid']:

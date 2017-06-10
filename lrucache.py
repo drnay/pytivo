@@ -41,6 +41,7 @@ discarded. [1]_
 
 import time
 from heapq import heappush, heappop, heapify
+from functools import total_ordering
 
 __version__ = "0.2"
 __all__ = ['CacheKeyError', 'LRUCache', 'DEFAULT_SIZE']
@@ -97,6 +98,7 @@ class LRUCache(object):
         print j, cache[j] # iterator produces keys, not values
     """
 
+    @total_ordering
     class __Node(object):
         """Record of a cached value. Not for public consumption."""
 
@@ -107,8 +109,11 @@ class LRUCache(object):
             self.atime = timestamp
             self.mtime = self.atime
 
-        def __cmp__(self, other):
-            return cmp(self.atime, other.atime)
+        def __lt__(self, other):
+            return self.atime < other.atime
+
+        def __eq__(self, other):
+            return self.atime == other.atime
 
         def __repr__(self):
             return "<%s %s => %s (%s)>" % \

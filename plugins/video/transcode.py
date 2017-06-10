@@ -43,14 +43,6 @@ if mswindows:
     patchSubprocess()
 
 def debug(msg):
-    if isinstance(msg, str):
-        try:
-            msg = msg.decode('utf8')
-        except:
-            if sys.platform == 'darwin':
-                msg = msg.decode('macroman')
-            else:
-                msg = msg.decode('cp1252')
     logger.debug(msg)
 
 def transcode(isQuery, inFile, outFile, tsn='', mime='', thead=''):
@@ -81,9 +73,7 @@ def transcode(isQuery, inFile, outFile, tsn='', mime='', thead=''):
 
     ffmpeg_path = config.get_bin('ffmpeg')
 
-    fname = str(inFile, 'utf-8')
-    if mswindows:
-        fname = fname.encode('cp1252')
+    fname = inFile
 
     if inFile[-5:].lower() == '.tivo':
         tivodecode_path = config.get_bin('tivodecode')
@@ -653,7 +643,7 @@ def tivo_compatible(inFile, tsn='', mime=''):
 
 def video_info(inFile, cache=True):
     vInfo = dict()
-    fname = str(inFile, 'utf-8')
+    fname = inFile
     mtime = os.path.getmtime(fname)
     if cache:
         if inFile in info_cache and info_cache[inFile][0] == mtime:
@@ -673,11 +663,9 @@ def video_info(inFile, cache=True):
             info_cache[inFile] = (mtime, vInfo)
         return vInfo
 
-    if mswindows:
-        fname = fname.encode('cp1252')
     cmd = [ffmpeg_path, '-i', fname]
     # Windows and other OS buffer 4096 and ffmpeg can output more than that.
-    err_tmp = tempfile.TemporaryFile()
+    err_tmp = tempfile.TemporaryFile('w+t')
     ffmpeg = subprocess.Popen(cmd, stderr=err_tmp, stdout=subprocess.PIPE,
                               stdin=subprocess.PIPE)
 
@@ -858,13 +846,6 @@ def video_info(inFile, cache=True):
                 else:
                     try:
                         key, value = [x.strip() for x in line.split(':', 1)]
-                        try:
-                            value = value.decode('utf-8')
-                        except:
-                            if sys.platform == 'darwin':
-                                value = value.decode('macroman')
-                            else:
-                                value = value.decode('cp1252')
                         rawmeta[key] = [value]
                     except:
                         pass
@@ -894,9 +875,7 @@ def video_info(inFile, cache=True):
 def audio_check(inFile, tsn):
     cmd_string = ('-y -c:v mpeg2video -r 29.97 -b:v 1000k -c:a copy ' +
                   select_audiolang(inFile, tsn) + ' -t 00:00:01 -f vob -')
-    fname = str(inFile, 'utf-8')
-    if mswindows:
-        fname = fname.encode('cp1252')
+    fname = inFile
     cmd = [config.get_bin('ffmpeg'), '-i', fname] + cmd_string.split()
     ffmpeg = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     fd, testname = tempfile.mkstemp()

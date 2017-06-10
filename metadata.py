@@ -63,6 +63,8 @@ nfo_cache = LRUCache(50)
 
 mswindows = (sys.platform == "win32")
 
+logger = logging.getLogger('pyTivo.metadata')
+
 def get_mpaa(rating):
     return HUMAN['mpaaRating'].get(rating, 'NR')
 
@@ -341,7 +343,6 @@ def from_eyetv(full_path):
 
 def from_text(full_path):
     metadata = {}
-    full_path = str(full_path, 'utf-8')
     path, name = os.path.split(full_path)
     title, ext = os.path.splitext(name)
 
@@ -365,21 +366,31 @@ def from_text(full_path):
     for metafile in search_paths:
         if os.path.exists(metafile):
             sep = ':='[metafile.endswith('.properties')]
-            for line in open(metafile, 'U'):
-                if line.startswith(BOM):
-                    line = line[3:]
-                if line.strip().startswith('#') or not sep in line:
-                    continue
-                key, value = [x.strip() for x in line.split(sep, 1)]
-                if not key or not value:
-                    continue
-                if key.startswith('v'):
-                    if key in metadata:
-                        metadata[key].append(value)
+
+            try:
+                # If we want to try some other standard encodings we could catch ValueError exceptions
+                # and try the next one in this encoding stack:
+                #encodings = [ x for x in ('utf-8', 'cp1252', 'macroman') if x != locale.getpreferredencoding() ]
+                #ecodings.append(locale.getpreferredencoding())
+                # but for now I think we don't care that much so we'll just use errors='replace'
+                for line in open(metafile, 'rt', errors='replace', newline=None):
+                    if line.startswith(BOM):
+                        line = line[3:]
+                    if line.strip().startswith('#') or not sep in line:
+                        continue
+                    key, value = [x.strip() for x in line.split(sep, 1)]
+                    if not key or not value:
+                        continue
+                    if key.startswith('v'):
+                        if key in metadata:
+                            metadata[key].append(value)
+                        else:
+                            metadata[key] = [value]
                     else:
-                        metadata[key] = [value]
-                else:
-                    metadata[key] = value
+                        metadata[key] = value
+            except:
+                logger.exception("from_text failed processing {}".format(metafile))
+                raise
 
     for rating, ratings in [('tvRating', TV_RATINGS),
                             ('mpaaRating', MPAA_RATINGS),
@@ -400,7 +411,7 @@ def basic(full_path, mtime=None):
     base_path, name = os.path.split(full_path)
     title, ext = os.path.splitext(name)
     if not mtime:
-        mtime = os.path.getmtime(str(full_path, 'utf-8'))
+        mtime = os.path.getmtime(full_path)
     try:
         originalAirDate = datetime.utcfromtimestamp(mtime)
     except:
@@ -704,7 +715,7 @@ def from_nfo(full_path):
     return metadata
 
 def _tdcat_bin(tdcat_path, full_path, tivo_mak):
-    fname = str(full_path, 'utf-8')
+    fname = full_path
     if mswindows:
         fname = fname.encode('cp1252')
     tcmd = [tdcat_path, '-m', tivo_mak, '-2', fname]
@@ -763,17 +774,6 @@ def from_tivo(full_path):
 
     return metadata
 
-def force_utf8(text):
-    if isinstance(text, str):
-        try:
-            text = text.decode('utf8')
-        except:
-            if sys.platform == 'darwin':
-                text = text.decode('macroman')
-            else:
-                text = text.decode('cp1252')
-    return text.encode('utf-8')
-
 def dump(output, metadata):
     for key in metadata:
         value = metadata[key]
@@ -791,7 +791,7 @@ if __name__ == '__main__':
         metadata = {}
         config.init([])
         logging.basicConfig()
-        fname = force_utf8(sys.argv[1])
+        fname = sys.argv[1]
         ext = os.path.splitext(fname)[1].lower()
         if ext == '.tivo':
             metadata.update(from_tivo(fname))
