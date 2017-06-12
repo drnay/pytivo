@@ -6,6 +6,7 @@ import threading
 import time
 import unicodedata
 import urllib
+import logging
 
 from Cheetah.Filters import Filter
 from lrucache import LRUCache
@@ -26,9 +27,10 @@ def GetPlugin(name):
         module = __import__(module_name, globals(), locals(), name)
         plugin = getattr(module, module.CLASS_NAME)()
         return plugin
-    except ImportError:
-        print 'Error no', name, 'plugin exists. Check the type ' \
-        'setting for your share.'
+    except ImportError, e:
+        logger = logging.getLogger('pyTivo.plugin')
+        logger.error('Error no %s plugin exists. Check the type setting for your share.' % name)
+        logger.debug('Exception: %s' % e)
         return Error
 
 class EncodeUnicode(Filter):
@@ -87,8 +89,8 @@ class Plugin(object):
         return path
 
     def item_count(self, handler, query, cname, files, last_start=0):
-        """Return only the desired portion of the list, as specified by 
-           ItemCount, AnchorItem and AnchorOffset. 'files' is either a 
+        """Return only the desired portion of the list, as specified by
+           ItemCount, AnchorItem and AnchorOffset. 'files' is either a
            list of strings, OR a list of objects with a 'name' attribute.
         """
         def no_anchor(handler, anchor):
