@@ -30,9 +30,9 @@ def GetPlugin(name):
         plugin = getattr(module, module.CLASS_NAME)()
         return plugin
     except ImportError as e:
-        print('Error no', name, 'plugin exists. Check the type ' \
-        'setting for your share.')
-        print(e)
+        logger = logging.getLogger('pyTivo.plugin')
+        logger.error('Error no %s plugin exists. Check the type setting for your share.' % name)
+        logger.debug('Exception: %s' % e)
         return Error
 
 class EncodeUnicode(Filter):
@@ -55,7 +55,6 @@ class EncodeUnicode(Filter):
 
 class Plugin(object):
 
-    logger = logging.getLogger('pyTivo.Plugin')
 
     random_lock = threading.Lock()
 
@@ -73,6 +72,7 @@ class Plugin(object):
         return it
 
     def init(self):
+        self.logger = logging.getLogger('pyTivo.plugin')
         pass
 
     def send_file(self, handler, path, query):
@@ -185,8 +185,6 @@ class Plugin(object):
             except:
                 pass
             return files
-
-        self.logger.debug("get_files: query= {}".format(query));
 
         subcname = query['Container'][0]
         path = self.get_local_path(handler, query)
