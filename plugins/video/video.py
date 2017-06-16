@@ -267,17 +267,10 @@ class Video(Plugin):
 
         duration = self.__duration(full_path)
         duration_delta = timedelta(milliseconds = duration)
-        min = duration_delta.seconds / 60
+        min = duration_delta.seconds // 60
         sec = duration_delta.seconds % 60
-        hours = min / 60
+        hours = min // 60
         min = min % 60
-
-        try:
-            test_size = self.__est_size(full_path, tsn, mime)
-            logger.debug("self.__est_size({}, {}, {}) = {}".format(full_path, tsn, mime, test_size))
-        except:
-            logger.debug("self.__est_size({}, {}, {}) = {}".format(full_path, tsn, mime, 'failed'))
-            logger.exception("getting size")
 
         data.update({'time': now.isoformat(),
                      'startTime': now.isoformat(),
@@ -285,7 +278,7 @@ class Video(Plugin):
                      'size': self.__est_size(full_path, tsn, mime),
                      'duration': duration,
                      'iso_duration': ('P%sDT%sH%sM%sS' %
-                          (duration_delta.days, hours, min, sec))})
+                                      (duration_delta.days, hours, min, sec))})
 
         return data
 
@@ -341,8 +334,7 @@ class Video(Plugin):
                 if len(files) == 1 or f.name in transcode.info_cache:
                     video['valid'] = transcode.supported_format(f.name)
                     if video['valid']:
-                        video.update(self.metadata_full(f.name, tsn,
-                                     mtime=mtime))
+                        video.update(self.metadata_full(f.name, tsn, mtime=mtime))
                         if len(files) == 1:
                             video['captureDate'] = hex(isogm(video['time']))
                 else:
@@ -457,17 +449,12 @@ class VideoDetails(UserDict):
                  'colorCode' : '4',
                  'showType' : ('SERIES', '5') }
 
-    def __getitem__(self, key):
-        if key not in self.data:
-            self.data[key] = self.default(key)
-        return self.data[key]
-
     def __contains__(self, key):
         return True
 
-    def default(self, key):
-        if key in defaults:
-            return defaults[key]
+    def __missing__(self, key):
+        if key in self.defaults:
+            return self.defaults[key]
         elif key.startswith('v'):
             return []
         else:
