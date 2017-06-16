@@ -643,8 +643,7 @@ def tivo_compatible(inFile, tsn='', mime=''):
 
 def video_info(inFile, cache=True):
     vInfo = dict()
-    fname = inFile
-    mtime = os.path.getmtime(fname)
+    mtime = os.path.getmtime(inFile)
     if cache:
         if inFile in info_cache and info_cache[inFile][0] == mtime:
             debug('CACHE HIT! %s' % inFile)
@@ -663,11 +662,10 @@ def video_info(inFile, cache=True):
             info_cache[inFile] = (mtime, vInfo)
         return vInfo
 
-    cmd = [ffmpeg_path, '-i', fname]
+    cmd = [ffmpeg_path, '-hide_banner', '-nostdin', '-i', inFile]
     # Windows and other OS buffer 4096 and ffmpeg can output more than that.
     err_tmp = tempfile.TemporaryFile('w+t')
-    ffmpeg = subprocess.Popen(cmd, stderr=err_tmp, stdout=subprocess.PIPE,
-                              stdin=subprocess.PIPE)
+    ffmpeg = subprocess.Popen(cmd, stderr=err_tmp, stdout=subprocess.PIPE)
 
     # wait configured # of seconds: if ffmpeg is not back give up
     limit = config.getFFmpegWait()
@@ -692,11 +690,11 @@ def video_info(inFile, cache=True):
     debug('ffmpeg output=%s' % output)
 
     attrs = {'container': r'Input #0, ([^,]+),',
-             'vCodec': r'Video: ([^, ]+)',             # video codec
-             'aKbps': r'.*Audio: .+, (.+) (?:kb/s).*',     # audio bitrate
-             'aCodec': r'.*Audio: ([^, ]+)',             # audio codec
-             'aFreq': r'.*Audio: .+, (.+) (?:Hz).*',       # audio frequency
-             'mapVideo': r'([0-9]+[.:]+[0-9]+).*: Video:.*'}  # video mapping
+             'vCodec':    r'Video: ([^, ]+)',                  # video codec
+             'aKbps':     r'.*Audio: .+, (.+) (?:kb/s).*',     # audio bitrate
+             'aCodec':    r'.*Audio: ([^, ]+)',                # audio codec
+             'aFreq':     r'.*Audio: .+, (.+) (?:Hz).*',       # audio frequency
+             'mapVideo':  r'([0-9]+[.:]+[0-9]+).*: Video:.*'}  # video mapping
 
     for attr in attrs:
         rezre = re.compile(attrs[attr])
