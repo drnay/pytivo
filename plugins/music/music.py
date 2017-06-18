@@ -1,4 +1,5 @@
 import os
+import logging
 import random
 import re
 import shutil
@@ -7,7 +8,9 @@ import sys
 import time
 import unicodedata
 import urllib.request, urllib.parse, urllib.error
+import io
 from xml.sax.saxutils import escape
+from functools import cmp_to_key
 
 import mutagen
 from mutagen.easyid3 import EasyID3
@@ -15,8 +18,10 @@ from mutagen.mp3 import MP3
 from Cheetah.Template import Template
 from lrucache import LRUCache
 import config
-from plugin import EncodeUnicode, Plugin, quote, unquote
+from plugin import Plugin, quote, unquote
 from plugins.video.transcode import kill
+
+logger = logging.getLogger('pyTivo.plugin.music')
 
 SCRIPTDIR = os.path.dirname(__file__)
 
@@ -91,11 +96,12 @@ class Music(Plugin):
     dir_cache = LRUCache(10)
 
     def send_file(self, handler, path, query):
+        logger.debug('send_file entered...')
         seek = int(query.get('Seek', [0])[0])
         duration = int(query.get('Duration', [0])[0])
         always = (handler.container.getboolean('force_ffmpeg') and
                   config.get_bin('ffmpeg'))
-        fname = str(path, 'utf-8')
+        fname = path
 
         ext = os.path.splitext(fname)[1].lower()
         needs_transcode = ext in TRANSCODE or seek or duration or always
@@ -105,16 +111,15 @@ class Music(Plugin):
             handler.send_response(200)
             handler.send_header('Content-Length', fsize)
         else:
+            # use chunked transfer-encoding to send transcoded data as we get it
+            # see https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
             handler.send_response(206)
             handler.send_header('Transfer-Encoding', 'chunked')
         handler.send_header('Content-Type', 'audio/mpeg')
         handler.end_headers()
 
         if needs_transcode:
-            if mswindows:
-                fname = fname.encode('cp1252')
-
-            cmd = [config.get_bin('ffmpeg'), '-i', fname, '-vn']
+            cmd = [config.get_bin('ffmpeg'), '-hide_banner', '-nostdin', '-i', fname, '-vn']
             if ext in ['.mp3', '.mp2']:
                 cmd += ['-acodec', 'copy']
             else:
@@ -125,14 +130,15 @@ class Music(Plugin):
             if duration:
                 cmd[-1:] = ['-t', '%.3f' % (duration / 1000.0), '-']
 
+            logger.debug('start process: {}'.format(cmd))
             ffmpeg = subprocess.Popen(cmd, bufsize=BLOCKSIZE,
                                       stdout=subprocess.PIPE)
             while True:
                 try:
                     block = ffmpeg.stdout.read(BLOCKSIZE)
-                    handler.wfile.write('%x\r\n' % len(block))
+                    handler.wfile.write(b'%x\r\n' % len(block))
                     handler.wfile.write(block)
-                    handler.wfile.write('\r\n')
+                    handler.wfile.write(b'\r\n')
                 except Exception as msg:
                     handler.server.logger.info(msg)
                     kill(ffmpeg)
@@ -205,7 +211,7 @@ class Music(Plugin):
             #item['ArtistName'] = artist
 
             ext = os.path.splitext(f.name)[1].lower()
-            fname = str(f.name, 'utf-8')
+            fname = f.name
 
             try:
                 # If the file is an mp3, let's load the EasyID3 interface
@@ -226,7 +232,7 @@ class Music(Plugin):
                             try:
                                 if tag in d:
                                     value = d[tag][0]
-                                    if type(value) not in [str, str]:
+                                    if not isinstance(value, str):
                                         value = str(value)
                                     return value
                             except:
@@ -243,16 +249,13 @@ class Music(Plugin):
                     item['AlbumYear'] = get_tag('date', audioFile)[:4]
                     item['MusicGenre'] = get_tag('genre', audioFile)
             except Exception as msg:
-                print(msg)
+                logger.error(msg)
 
             ffmpeg_path = config.get_bin('ffmpeg')
             if 'Duration' not in item and ffmpeg_path:
-                if mswindows:
-                    fname = fname.encode('cp1252')
-                cmd = [ffmpeg_path, '-i', fname]
+                cmd = [ffmpeg_path, '-hide_banner', '-nostdin', '-i', fname]
                 ffmpeg = subprocess.Popen(cmd, stderr=subprocess.PIPE,
-                                               stdout=subprocess.PIPE,
-                                               stdin=subprocess.PIPE)
+                                               stdout=subprocess.PIPE)
 
                 # wait 10 sec if ffmpeg is not back give up
                 for i in range(200):
@@ -287,10 +290,10 @@ class Music(Plugin):
             return
 
         if os.path.splitext(subcname)[1].lower() in PLAYLISTS:
-            t = Template(PLAYLIST_TEMPLATE, filter=EncodeUnicode)
+            t = Template(PLAYLIST_TEMPLATE)
             t.files, t.total, t.start = self.get_playlist(handler, query)
         else:
-            t = Template(FOLDER_TEMPLATE, filter=EncodeUnicode)
+            t = Template(FOLDER_TEMPLATE)
             t.files, t.total, t.start = self.get_files(handler, query,
                                                        AudioFileFilter)
         t.files = list(map(media_data, t.files))
@@ -307,7 +310,7 @@ class Music(Plugin):
         path = os.path.join(handler.container['path'], *splitpath[1:])
 
         if path in self.media_data_cache:
-            t = Template(ITEM_TEMPLATE, filter=EncodeUnicode)
+            t = Template(ITEM_TEMPLATE)
             t.file = self.media_data_cache[path]
             t.escape = escape
             handler.send_xml(str(t))
@@ -318,23 +321,22 @@ class Music(Plugin):
 
         ext = os.path.splitext(list_name)[1].lower()
 
-        try:
-            url = list_name.index('http://')
-            list_name = list_name[url:]
-            list_file = urllib.request.urlopen(list_name)
-        except:
-            list_file = open(str(list_name, 'utf-8'))
-            local_path = os.path.sep.join(list_name.split(os.path.sep)[:-1])
-
         if ext in ('.m3u', '.pls'):
             charset = 'cp1252'
         else:
             charset = 'utf-8'
 
+        try:
+            url = list_name.index('http://')
+            list_name = list_name[url:]
+            list_file = io.TextIOWrapper(urllib.request.urlopen(list_name), encoding=charset, errors='replace')
+        except:
+            list_file = open(list_name, 'rt', encoding=charset, errors='replace')
+            local_path = os.path.sep.join(list_name.split(os.path.sep)[:-1])
+
         if ext in ('.wpl', '.asx', '.wax', '.wvx', '.b4s'):
             playlist = []
             for line in list_file:
-                line = str(line, charset).encode('utf-8')
                 if ext == '.wpl':
                     s = wplfile(line)
                 elif ext == '.b4s':
@@ -347,7 +349,6 @@ class Music(Plugin):
         elif ext == '.pls':
             names, titles, lengths = {}, {}, {}
             for line in list_file:
-                line = str(line, charset).encode('utf-8')
                 s = plsfile(line)
                 if s:
                     names[s.group(1)] = s.group(2)
@@ -372,7 +373,7 @@ class Music(Plugin):
             duration, title = 0, ''
             playlist = []
             for line in list_file:
-                line = str(line.strip(), charset).encode('utf-8')
+                line = line.strip()
                 if line:
                     if line.startswith('#EXTINF:'):
                         try:
@@ -421,7 +422,6 @@ class Music(Plugin):
 
         def build_recursive_list(path, recurse=True):
             files = []
-            path = str(path, 'utf-8')
             try:
                 for f in os.listdir(path):
                     if f.startswith('.'):
@@ -430,7 +430,6 @@ class Music(Plugin):
                     isdir = os.path.isdir(f)
                     if sys.platform == 'darwin':
                         f = unicodedata.normalize('NFC', f)
-                    f = f.encode('utf-8')
                     if recurse and isdir:
                         files.extend(build_recursive_list(f))
                     else:
@@ -441,17 +440,19 @@ class Music(Plugin):
                 pass
             return files
 
-        def dir_sort(x, y):
+        def dir_cmp(x, y):
             if x.isdir == y.isdir:
                 if x.isplay == y.isplay:
-                    return name_sort(x, y)
+                    if x.name < y.name:
+                        return -1
+                    if x.name == y.name:
+                        return 0
                 else:
                     return y.isplay - x.isplay
+                return 1
             else:
                 return y.isdir - x.isdir
 
-        def name_sort(x, y):
-            return cmp(x.name, y.name)
 
         path = self.get_local_path(handler, query)
 
@@ -466,7 +467,7 @@ class Music(Plugin):
             if path in rc:
                 filelist = rc[path]
         else:
-            updated = os.path.getmtime(str(path, 'utf-8'))
+            updated = os.path.getmtime(path)
             if path in dc and dc.mtime(path) >= updated:
                 filelist = dc[path]
             for p in rc:
@@ -514,7 +515,7 @@ class Music(Plugin):
                         handler.server.logger.warning('Start not found: ' +
                                                       start)
             else:
-                filelist.files.sort(dir_sort)
+                filelist.files.sort(key = cmp_to_key(dir_cmp))
 
             filelist.sortby = sortby
             filelist.unsorted = False
