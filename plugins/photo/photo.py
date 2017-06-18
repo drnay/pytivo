@@ -25,6 +25,7 @@
 # Version 0.1,  Dec. 7, 2007
 
 import os
+import logging
 import re
 import random
 import subprocess
@@ -36,6 +37,10 @@ import unicodedata
 import urllib.request, urllib.parse, urllib.error
 from io import StringIO
 from xml.sax.saxutils import escape
+from functools import cmp_to_key
+from operator import attrgetter
+
+logger = logging.getLogger('pyTivo.plugin.photo')
 
 use_pil = True
 try:
@@ -45,7 +50,7 @@ except ImportError:
         import Image
     except ImportError:
         use_pil = False
-        print('Python Imaging Library not found; using FFmpeg')
+        logger.info('Python Imaging Library not found; using FFmpeg')
 
 import config
 from Cheetah.Template import Template
@@ -75,7 +80,7 @@ iname = os.path.join(SCRIPTDIR, 'templates', 'item.tmpl')
 PHOTO_TEMPLATE = open(tname, 'rb').read().decode('utf-8')
 ITEM_TEMPLATE = open(iname, 'rb').read().decode('utf-8')
 
-JFIF_TAG = '\xff\xe0\x00\x10JFIF\x00\x01\x02\x00\x00\x01\x00\x01\x00\x00'
+JFIF_TAG = b'\xff\xe0\x00\x10JFIF\x00\x01\x02\x00\x00\x01\x00\x01\x00\x00'
 
 class Photo(Plugin):
 
@@ -221,13 +226,12 @@ class Photo(Plugin):
         return True, encoded
 
     def get_size_ffmpeg(self, ffmpeg_path, fname):
-        cmd = [ffmpeg_path, '-i', fname]
+        cmd = [ffmpeg_path, '-hide_banner', '-nostdin', '-i', fname]
         # Windows and other OS buffer 4096 and ffmpeg can output more
         # than that.
-        err_tmp = tempfile.TemporaryFile()
+        err_tmp = tempfile.TemporaryFile('w+t')
         ffmpeg = subprocess.Popen(cmd, stderr=err_tmp,
-                                  stdout=subprocess.PIPE,
-                                  stdin=subprocess.PIPE)
+                                  stdout=subprocess.PIPE)
 
         # wait configured # of seconds: if ffmpeg is not back give up
         limit = config.getFFmpegWait()
@@ -262,8 +266,6 @@ class Photo(Plugin):
             return False, 'FFmpeg not found'
 
         fname = path
-        if sys.platform == 'win32':
-            fname = fname.encode('cp1252')
 
         if attrs and 'size' in attrs:
             result = attrs['size']
@@ -294,16 +296,16 @@ class Photo(Plugin):
 
         neww, newh = oldw, oldh
         while (neww / width >= 50) or (newh / height >= 50):
-            neww /= 2
-            newh /= 2
+            neww //= 2
+            newh //= 2
             filters += 'scale=%d:%d,' % (neww, newh)
 
         filters += 'scale=%d:%d' % (width, height)
 
-        cmd = [ffmpeg_path, '-i', fname, '-vf', filters, '-f', 'mjpeg', '-']
+        cmd = [ffmpeg_path, '-hide_banner', '-nostdin', '-i', fname, '-vf', filters, '-f', 'mjpeg', '-']
+        logger.debug('start process: {}'.format(cmd))
         jpeg_tmp = tempfile.TemporaryFile()
-        ffmpeg = subprocess.Popen(cmd, stdout=jpeg_tmp,
-                                  stdin=subprocess.PIPE)
+        ffmpeg = subprocess.Popen(cmd, stdout=jpeg_tmp)
 
         # wait configured # of seconds: if ffmpeg is not back give up
         limit = config.getFFmpegWait()
@@ -323,7 +325,7 @@ class Photo(Plugin):
         output = jpeg_tmp.read()
         jpeg_tmp.close()
 
-        if 'JFIF' not in output[:10]:
+        if b'JFIF' not in output[:10]:
             output = output[:2] + JFIF_TAG + output[2:]
 
         return True, output
@@ -427,7 +429,7 @@ class Photo(Plugin):
         t.name = query['Container'][0]
         t.container = handler.cname
         t.files, t.total, t.start = self.get_files(handler, query,
-            ImageFileFilter)
+                                                   ImageFileFilter)
         t.files = list(map(media_data, t.files))
         t.quote = quote
         t.escape = escape
@@ -481,7 +483,6 @@ class Photo(Plugin):
                     isdir = os.path.isdir(f)
                     if sys.platform == 'darwin':
                         f = unicodedata.normalize('NFC', f)
-                    f = f.encode('utf-8')
                     if recurse and isdir:
                         files.extend(build_recursive_list(f))
                     else:
@@ -492,20 +493,6 @@ class Photo(Plugin):
 
             return files
 
-        def name_sort(x, y):
-            return cmp(x.name, y.name)
-
-        def cdate_sort(x, y):
-            return cmp(x.cdate, y.cdate)
-
-        def mdate_sort(x, y):
-            return cmp(x.mdate, y.mdate)
-
-        def dir_sort(x, y):
-            if x.isdir == y.isdir:
-                return sortfunc(x, y)
-            else:
-                return y.isdir - x.isdir
 
         path = self.get_local_path(handler, query)
 
@@ -566,20 +553,19 @@ class Photo(Plugin):
                         i = filelist.files.pop(index)
                         filelist.files.insert(0, i)
                     except ValueError:
-                        handler.server.logger.warning('Start not found: ' +
-                                                      start)
+                        handler.server.logger.warning('Start not found: {}'.format(start))
             else:
                 if 'CaptureDate' in sortby:
-                    sortfunc = cdate_sort
+                    sortkey= 'cdate'
                 elif 'LastChangeDate' in sortby:
-                    sortfunc = mdate_sort
+                    sortkey= 'mdate'
                 else:
-                    sortfunc = name_sort
+                    sortkey= 'name'
 
+                # sort by sortkey then if requested by dir/not directory
+                filelist.files.sort(key = attrgetter(sortkey))
                 if 'Type' in sortby:
-                    filelist.files.sort(dir_sort)
-                else:
-                    filelist.files.sort(sortfunc)
+                    filelist.files.sort(key = attrgetter('isdir'), reverse = True)
 
             filelist.sortby = sortby
             filelist.unsorted = False
