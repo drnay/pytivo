@@ -90,9 +90,9 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         http.server.BaseHTTPRequestHandler.__init__(self, request,
             client_address, server)
 
-    def address_string(self):
+    def address_port_string(self):
         host, port = self.client_address[:2]
-        return host
+        return "{}:{}".format(host, port)
 
     def version_string(self):
         """ Override version_string() so it doesn't include the Python
@@ -243,7 +243,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
     def handle_file(self, query, splitpath):
         if '..' not in splitpath:    # Protect against path exploits
             ## Pass it off to a plugin?
-            for name, container in list(self.server.containers.items()):
+            for name, container in self.server.containers.items():
                 if splitpath[0] == name:
                     self.cname = name
                     self.container = container
@@ -278,7 +278,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         return False
 
     def log_message(self, format, *args):
-        self.server.logger.info("%s [%s] %s" % (self.address_string(),
+        self.server.logger.info("%s [%s] %s" % (self.address_port_string(),
                                 self.log_date_time_string(), format%args))
 
     def send_fixed(self, page, mime, code=200, refresh=''):

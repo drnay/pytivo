@@ -183,7 +183,7 @@ class ZCBroadcast:
         return names
 
     def shutdown(self):
-        self.logger.info('Unregistering: %s' % ' '.join(self.share_names))
+        self.logger.info('Unregistering: %s' % ', '.join(self.share_names))
         for info in self.share_info:
             self.rz.unregister_service(info)
         self.rz.close()

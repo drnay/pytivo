@@ -22,7 +22,7 @@ import httpserver
 
 def exceptionLogger(*args):
     sys.excepthook = sys.__excepthook__
-    logging.getLogger('pyTivo').error('Exception in pyTivo', exc_info=args)
+    logging.getLogger('pyTivo').critical('Exception in pyTivo', exc_info=args)
 
 def last_date():
     lasttime = -1

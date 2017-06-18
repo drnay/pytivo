@@ -10,6 +10,20 @@ import uuid
 from configparser import NoOptionError
 from functools import reduce
 
+
+# Any configuration section whose name is not special is considered a share section
+special_section_names = ('Server',      # for main pytivo settings
+                         'togo',        # for togo settings
+                         'loggers',     # for advanced logging (see logging.config)
+                         'handlers',    #  "
+                         'formatters',  #  "
+                        )
+special_section_prefixes = ('_tivo_',       # for override setting for a tivo w/ a specific tsn
+                            'logger_',      # for advanced logging (see logging.config)
+                            'handler_',     #  "
+                            'formatter_',   #  "
+                           )
+
 class Bdict(dict):
     def getboolean(self, x):
         return self.get(x, 'False').lower() in ('1', 'yes', 'true', 'on')
@@ -79,6 +93,12 @@ def tivos_by_ip(tivoIP):
 def get_server(name, default=None):
     if config.has_option('Server', name):
         return config.get('Server', name)
+    else:
+        return default
+
+def get_togo(name, default=None):
+    if config.has_option('togo', name):
+        return config.get('togo', name)
     else:
         return default
 
@@ -161,10 +181,8 @@ def isTsnInConfig(tsn):
 def getShares(tsn=''):
     shares = [(section, Bdict(config.items(section)))
               for section in config.sections()
-              if not (section.startswith(('_tivo_', 'logger_', 'handler_',
-                                          'formatter_'))
-                      or section in ('Server', 'loggers', 'handlers',
-                                     'formatters')
+              if not (section.startswith(special_section_prefixes)
+                      or section in (special_section_names)
               )
     ]
 
