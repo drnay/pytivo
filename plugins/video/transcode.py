@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import time
+import locale
 
 import lrucache
 
@@ -85,17 +86,19 @@ def transcode(isQuery, inFile, outFile, tsn='', mime='', thead=''):
             cmd = ''
             ffmpeg = tivodecode
         else:
-            cmd = [ffmpeg_path, '-i', '-'] + settings
-            ffmpeg = subprocess.Popen(cmd, stdin=tivodecode.stdout,
+            cmd = [ffmpeg_path, '-hide_banner', '-i', '-'] + settings
+            ffmpeg = subprocess.Popen(cmd,
+                                      stdin=tivodecode.stdout,
                                       stdout=subprocess.PIPE,
                                       bufsize=(512 * 1024))
     else:
-        cmd = [ffmpeg_path, '-i', fname] + settings
-        ffmpeg = subprocess.Popen(cmd, bufsize=(512 * 1024),
-                                  stdout=subprocess.PIPE)
+        cmd = [ffmpeg_path, '-hide_banner', '-i', fname] + settings
+        ffmpeg = subprocess.Popen(cmd,
+                                  stdout=subprocess.PIPE,
+                                  bufsize=(512 * 1024))
 
     if cmd:
-        debug('transcoding to tivo model ' + tsn[:3] + ' using ffmpeg command:')
+        debug('transcoding to tivo model {} using ffmpeg command:'.format(tsn[:3]))
         debug(' '.join(cmd))
 
     ffmpeg_procs[inFile] = {'process': ffmpeg, 'start': 0, 'end': 0,
@@ -126,14 +129,14 @@ def resume_transfer(inFile, outFile, offset):
             if offset < length:
                 if offset > 0:
                     block = block[offset:]
-                outFile.write('%x\r\n' % len(block))
+                outFile.write(b'%x\r\n' % len(block))
                 outFile.write(block)
-                outFile.write('\r\n')
+                outFile.write(b'\r\n')
                 count += len(block)
             offset -= length
         outFile.flush()
     except Exception as msg:
-        logger.info(msg)
+        logger.exception('Exception in resume_transfer count={}'.format(count))
         return count
 
     proc['start'] = proc['end']
@@ -150,8 +153,8 @@ def transfer_blocks(inFile, outFile):
         try:
             block = proc['process'].stdout.read(BLOCKSIZE)
             proc['last_read'] = time.time()
-        except Exception as msg:
-            logger.info(msg)
+        except Exception:
+            logger.exception('Exception reading from the ffmpeg process for {}'.format(inFile))
             cleanup(inFile)
             kill(proc['process'])
             break
@@ -159,8 +162,8 @@ def transfer_blocks(inFile, outFile):
         if not block:
             try:
                 outFile.flush()
-            except Exception as msg:
-                logger.info(msg)
+            except Exception:
+                logger.exception('Exception flushing outFile')
             else:
                 cleanup(inFile)
             break
@@ -172,12 +175,12 @@ def transfer_blocks(inFile, outFile):
             blocks.pop(0)
 
         try:
-            outFile.write('%x\r\n' % len(block))
+            outFile.write(b'%x\r\n' % len(block))
             outFile.write(block)
-            outFile.write('\r\n')
+            outFile.write(b'\r\n')
             count += len(block)
-        except Exception as msg:
-            logger.info(msg)
+        except Exception:
+            logger.exception('Exception writing count={}'.format(count))
             break
 
     return count
@@ -202,6 +205,7 @@ def cleanup(inFile):
 def select_audiocodec(isQuery, inFile, tsn='', mime=''):
     if inFile[-5:].lower() == '.tivo':
         return ['-c:a', 'copy']
+
     vInfo = video_info(inFile)
     codectype = vInfo['vCodec']
     # Default, compatible with all TiVo's
@@ -662,33 +666,25 @@ def video_info(inFile, cache=True):
             info_cache[inFile] = (mtime, vInfo)
         return vInfo
 
-    cmd = [ffmpeg_path, '-hide_banner', '-nostdin', '-i', inFile]
-    # Windows and other OS buffer 4096 and ffmpeg can output more than that.
-    err_tmp = tempfile.TemporaryFile('w+t')
-    ffmpeg = subprocess.Popen(cmd, stderr=err_tmp, stdout=subprocess.PIPE)
+    # Windows and other OS buffer 4096 and ffmpeg can output more than that
+    # so we capture the output in a text temp file
+    with tempfile.TemporaryFile('w+t') as err_tmp:
+        try:
+            limit = config.getFFmpegWait() or None
+            cmd = [ffmpeg_path, '-hide_banner', '-nostdin', '-i', inFile]
+            ffmpeg = subprocess.run(cmd, stderr=err_tmp, timeout=limit)
 
-    # wait configured # of seconds: if ffmpeg is not back give up
-    limit = config.getFFmpegWait()
-    if limit:
-        for i in range(limit * 20):
-            time.sleep(.05)
-            if not ffmpeg.poll() == None:
-                break
-
-        if ffmpeg.poll() == None:
-            kill(ffmpeg)
+        except subprocess.TimeoutExpired:
             vInfo['Supported'] = False
             if cache:
                 info_cache[inFile] = (mtime, vInfo)
             return vInfo
-    else:
-        ffmpeg.wait()
 
-    err_tmp.seek(0)
-    output = err_tmp.read()
-    err_tmp.close()
-    debug('ffmpeg output=%s' % output)
+        err_tmp.seek(0)
+        output = err_tmp.read()
+        debug('ffmpeg output=%s' % output)
 
+    # parse the ffmpeg output for attributes of the video file
     attrs = {'container': r'Input #0, ([^,]+),',
              'vCodec':    r'Video: ([^, ]+)',                  # video codec
              'aKbps':     r'.*Audio: .+, (.+) (?:kb/s).*',     # audio bitrate
@@ -871,22 +867,40 @@ def video_info(inFile, cache=True):
     return vInfo
 
 def audio_check(inFile, tsn):
-    cmd_string = ('-y -c:v mpeg2video -r 29.97 -b:v 1000k -c:a copy ' +
-                  select_audiolang(inFile, tsn) + ' -t 00:00:01 -f vob -')
-    fname = inFile
-    cmd = [config.get_bin('ffmpeg'), '-i', fname] + cmd_string.split()
-    ffmpeg = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    """
+    Get the video_info for a test transcode of the desired audio stream
+    by transcoding one second of the source file and extracting its info.
+    """
+
+    # create an empty temporary file to be written to by ffmpeg
     fd, testname = tempfile.mkstemp()
-    testfile = os.fdopen(fd, 'wb')
+    os.close(fd)
+
+    cmd = [config.get_bin('ffmpeg'), '-hide_banner', '-nostdin',
+           '-i', inFile,
+           '-y',
+           '-c:v', 'mpeg2video',
+           '-r', '29.97',
+           '-b:v', '1000k',
+           '-c:a', 'copy'
+          ] + \
+          select_audiolang(inFile, tsn).split() + \
+          ['-t', '00:00:01',
+           '-f', 'vob',
+           testname
+          ]
+
     try:
-        shutil.copyfileobj(ffmpeg.stdout, testfile)
-    except:
-        kill(ffmpeg)
-        testfile.close()
+        ffmpeg = subprocess.run(cmd, timeout=10,
+                                stderr=subprocess.PIPE,
+                                encoding=locale.getpreferredencoding(),
+                                errors='replace')
+    except subprocess.TimeoutExpired:
+        debug('audio_check: ffmpeg timed out.\nffmpeg reported: {}'.format(ffmpeg.stderr))
         vInfo = None
     else:
-        testfile.close()
         vInfo = video_info(testname, False)
+
     os.remove(testname)
     return vInfo
 

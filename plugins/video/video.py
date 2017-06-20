@@ -230,6 +230,9 @@ class Video(Plugin):
                 ep = 0
             data['episodeNumber'] = str(ep)
 
+        # For debugging, co-opt the video Host field which is displayed by
+        # the TiVo on the info page of the video to show additional debugging
+        # transcoding information.
         if config.getDebug() and 'vHost' not in data:
             compatible, reason = transcode.tivo_compatible(full_path, tsn, mime)
             if compatible:
@@ -402,6 +405,9 @@ class Video(Plugin):
         return details
 
     def tivo_header(self, tsn, path, mime):
+        """
+        Create and return a tivo header for the given video file as bytes
+        """
         def pad(length, align):
             extra = length % align
             if extra:
@@ -412,19 +418,20 @@ class Video(Plugin):
             flag = 45
         else:
             flag = 13
-        details = self.get_details_xml(tsn, path)
+        details = self.get_details_xml(tsn, path).encode('utf-8')
         ld = len(details)
-        chunk = details + '\0' * (pad(ld, 4) + 4)
+        chunk = details + b'\0' * (pad(ld, 4) + 4)
         lc = len(chunk)
         blocklen = lc * 2 + 40
         padding = pad(blocklen, 1024)
 
-        return ''.join(['TiVo', struct.pack('>HHHLH', 4, flag, 0,
-                                            padding + blocklen, 2),
-                        struct.pack('>LLHH', lc + 12, ld, 1, 0),
-                        chunk,
-                        struct.pack('>LLHH', lc + 12, ld, 2, 0),
-                        chunk, '\0' * padding])
+        return b''.join([b'TiVo',
+                         struct.pack('>HHHLH', 4, flag, 0, padding + blocklen, 2),
+                         struct.pack('>LLHH', lc + 12, ld, 1, 0),
+                         chunk,
+                         struct.pack('>LLHH', lc + 12, ld, 2, 0),
+                         chunk,
+                         b'\0' * padding])
 
     def TVBusQuery(self, handler, query):
         tsn = handler.headers.get('tsn', '')
