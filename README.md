@@ -125,6 +125,8 @@ Next:
   [Requests package][py3 requests pkg].
 - update the use of [configparser][py3 configparser] because [Legacy API Ex.][py3 config legacy]
   says "...mapping protocol access is preferred for new projects."
+- use subprocess.run instead of Popen where it makes sense.
+- consistently return a ffmpeg options in lists not strings in transcode.py
 - enhance web UI (not even sure what that means yet)
 - Add something like kmttg's naming for saving togo files
 

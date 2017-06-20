@@ -65,7 +65,7 @@ def reset():
     config = configparser.ConfigParser()
     configs_found = config.read(config_files)
     if not configs_found:
-        print(('WARNING: pyTivo.conf does not exist.\n' +
+        print(('WARNING: pyTivo.conf does not exist.\n'
                'Assuming default values.'))
         configs_found = config_files[-1:]
 
@@ -86,7 +86,7 @@ def write():
     f.close()
 
 def tivos_by_ip(tivoIP):
-    for key, value in list(tivos.items()):
+    for key, value in tivos.items():
         if value['address'] == tivoIP:
             return key
 
@@ -182,9 +182,8 @@ def getShares(tsn=''):
     shares = [(section, Bdict(config.items(section)))
               for section in config.sections()
               if not (section.startswith(special_section_prefixes)
-                      or section in (special_section_names)
-              )
-    ]
+                      or section in (special_section_names))
+             ]
 
     tsnsect = '_tivo_' + tsn
     if config.has_section(tsnsect) and config.has_option(tsnsect, 'shares'):

@@ -371,7 +371,7 @@ def from_text(full_path):
                 # If we want to try some other standard encodings we could catch ValueError exceptions
                 # and try the next one in this encoding stack:
                 #encodings = [ x for x in ('utf-8', 'cp1252', 'macroman') if x != locale.getpreferredencoding() ]
-                #ecodings.append(locale.getpreferredencoding())
+                #encodings.append(locale.getpreferredencoding())
                 # but for now I think we don't care that much so we'll just use errors='replace'
                 for line in open(metafile, 'rt', errors='replace', newline=None):
                     if line.startswith(BOM):
