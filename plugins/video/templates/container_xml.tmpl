@@ -39,7 +39,11 @@
             <SourceSize>$video.size</SourceSize>
             <Duration>$video.duration</Duration>
             #if $video.isEpisode != 'false' and $video.episodeTitle
-            <EpisodeTitle>$escape($video.episodeTitle)</EpisodeTitle>
+                #set $dispEpTitle = $video.episodeTitle
+                #if $video.episodeNumber
+                    #set $dispEpTitle = '{episodeNumber}: {episodeTitle}'.format(**$video)
+                #end if
+            <EpisodeTitle>$escape($dispEpTitle)</EpisodeTitle>
             #end if 
             <Description>$escape($video.description)</Description>
             <SourceChannel>$escape($video.displayMajorNumber)</SourceChannel>
