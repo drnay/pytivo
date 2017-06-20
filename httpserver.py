@@ -21,9 +21,9 @@ SCRIPTDIR = os.path.dirname(__file__)
 
 SERVER_INFO = """<?xml version="1.0" encoding="utf-8"?>
 <TiVoServer>
-<Version>1.6</Version>
-<InternalName>pyTivo</InternalName>
-<InternalVersion>1.0</InternalVersion>
+<Version>2.0.0</Version>
+<InternalName>py3Tivo</InternalName>
+<InternalVersion>2.0.0</InternalVersion>
 <Organization>pyTivo Developers</Organization>
 <Comment>http://pytivo.sf.net/</Comment>
 </TiVoServer>"""
@@ -41,7 +41,7 @@ VIDEO_FORMATS_TS = """<?xml version="1.0" encoding="utf-8"?>
 
 BASE_HTML = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 "http://www.w3.org/TR/html4/strict.dtd">
-<html> <head><title>pyTivo</title>
+<html> <head><title>py3Tivo</title>
 <link rel="stylesheet" type="text/css" href="/main.css">
 </head> <body> %s </body> </html>"""
 
