@@ -21,6 +21,7 @@ import config
 import plugins.video.transcode
 import turing
 
+
 # Something to strip
 TRIBUNE_CR = ' Copyright Tribune Media Services, Inc.'
 ROVI_CR = ' Copyright Rovi, Inc.'
@@ -444,7 +445,9 @@ def from_container(xmldoc):
             'displayMajorNumber': 'SourceChannel',
             'callsign':         'SourceStation',
             'showingBits':      'ShowingBits',
-            'mpaaRating':       'MpaaRating'}
+            'mpaaRating':       'MpaaRating',
+            'recordDate':       'CaptureDate',
+           }
 
     details = xmldoc.getElementsByTagName('Details')[0]
 
@@ -734,7 +737,7 @@ def _tdcat_py(full_path, tivo_mak):
     count = 0
     for i in range(chunks):
         chunk_size, data_size, id, enc = struct.unpack('>LLHH',
-            rawdata[count:count + 12])
+                                                       rawdata[count:count + 12])
         count += 12
         data = rawdata[count:count + data_size]
         xml_data[id] = {'enc': enc, 'data': data, 'start': count + 16}
