@@ -24,6 +24,8 @@ special_section_prefixes = ('_tivo_',       # for override setting for a tivo w/
                             'formatter_',   #  "
                            )
 
+SCRIPTDIR = os.path.dirname(__file__)
+
 class Bdict(dict):
     def getboolean(self, x):
         return self.get(x, 'False').lower() in ('1', 'yes', 'true', 'on')
@@ -38,8 +40,7 @@ def init(argv):
     guid = uuid.uuid4()
     tivos_found = False
 
-    p = os.path.dirname(__file__)
-    config_files = ['/etc/pyTivo.conf', os.path.join(p, 'pyTivo.conf')]
+    config_files = ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
 
     try:
         opts, _ = getopt.getopt(argv, 'c:e:', ['config=', 'extraconf='])
@@ -243,7 +244,7 @@ def get_bin(fname):
     else:
         fext = ''
 
-    for path in ([os.path.join(os.path.dirname(__file__), 'bin')] +
+    for path in ([os.path.join(SCRIPTDIR, 'bin')] +
                  os.getenv('PATH').split(os.pathsep)):
         fpath = os.path.join(path, fname + fext)
         if os.path.exists(fpath) and os.path.isfile(fpath):
