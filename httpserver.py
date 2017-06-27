@@ -87,8 +87,17 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.server_version = 'pyTivo/1.0'
         self.protocol_version = 'HTTP/1.1'
         self.sys_version = ''
-        http.server.BaseHTTPRequestHandler.__init__(self, request,
-            client_address, server)
+
+        try:
+            http.server.BaseHTTPRequestHandler.__init__(self, request,
+                                                        client_address, server)
+        except:
+            server.logger.exception('Exception initializing the BaseHTTPRequestHandler')
+
+    def setup(self):
+        http.server.BaseHTTPRequestHandler.setup(self)
+        self.request.settimeout(180) # This allows pyTivo to die when user selects Stop Transfer on the TiVo
+
 
     def address_port_string(self):
         host, port = self.client_address[:2]
@@ -203,6 +212,13 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
                 self.send_xml(SERVER_INFO)
                 return
 
+            elif command in ('GetActiveTransferCount', 'GetTransferStatus'):
+                plugin = GetPlugin('video')
+                if hasattr(plugin, command):
+                    method = getattr(plugin, command)
+                    method(self, query)
+                    return True
+
             elif command in ('FlushServer', 'ResetServer'):
                 # Does nothing -- included for completeness
                 self.send_response(200)
@@ -297,6 +313,8 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Expires', '0')
         if refresh:
             self.send_header('Refresh', refresh)
+        #uncomment for angular development in browser
+        #self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         self.wfile.write(page)
         self.wfile.flush()
@@ -306,6 +324,12 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
             page = bytes(page, 'utf-8')
 
         self.send_fixed(page, 'text/xml')
+
+    def send_json(self, page):
+        if not isinstance(page, bytes):
+            page = bytes(page, 'utf-8')
+
+        self.send_fixed(page, 'application/json; charset=utf-8')
 
     def send_html(self, page, code=200, refresh=''):
         if not isinstance(page, bytes):
