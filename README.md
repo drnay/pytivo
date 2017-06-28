@@ -88,6 +88,7 @@ Install these python packages (with pip):
 - zeroconf
 - mutagen
 - cheetah3
+- pytz
 
 The required python packages are in `requirements.txt` and may be installed by running:
 
