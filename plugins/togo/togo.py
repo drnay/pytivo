@@ -4,7 +4,6 @@ import logging
 import os
 import subprocess
 import sys
-import _thread
 import time
 import json
 import pytz
@@ -13,6 +12,7 @@ import urllib.request, urllib.error, urllib.parse
 from urllib.parse import quote, unquote
 from xml.dom import minidom
 from datetime import datetime
+from threading import Thread, RLock
 
 from Cheetah.Template import Template
 
@@ -64,9 +64,16 @@ mswindows = (sys.platform == "win32")
 status = {}         # Global variable to control download threads
 tivo_cache = {}     # Cache of TiVo NPL
 json_cache = {}     # Cache of TiVo json NPL data
-queue = {}          # Recordings to download -- list per TiVo
 basic_meta = {}     # Data from NPL, parsed, indexed by progam URL
 details_urls = {}   # URLs for extended data, indexed by main URL
+
+# An entry in the active_tivos dict is created with a list of recordings
+# to download for each TiVo (ie the key unique to a TiVo (usually
+# the IP addr)
+# As it is accessed by multiple threads a lock must be obtained
+# before accessing it.
+active_tivos_lock = RLock()
+active_tivos = {}
 
 def null_cookie(name, value):
     return http.cookiejar.Cookie(0, name, value, None, False, '', False,
@@ -119,7 +126,7 @@ class ToGo(Plugin):
                     continue
 
                 # Log and throw the error otherwise
-                logger.error(e)
+                logger.error('ToGo.tivo_open({}) raised {}: {}'.format(url, e.__class__.__name__, e))
                 raise
 
     def GetTiVoList(self, handler, query):
@@ -314,10 +321,10 @@ class ToGo(Plugin):
         json_config = {}
         if 'TiVo' in query:
             tivoIP = query['TiVo'][0]
-            if tivoIP in queue:
-                json_config['urls'] = []
-                for url in queue[tivoIP]:
-                    json_config['urls'].append(url)
+            with active_tivos_lock:
+                if tivoIP in active_tivos:
+                    with active_tivos[tivoIP]['lock']:
+                        json_config['urls'] = list(active_tivos[tivoIP]['queue'])
 
         handler.send_json(json.dumps(json_config))
 
@@ -325,8 +332,10 @@ class ToGo(Plugin):
         json_config = {}
         json_config['count'] = 0
 
-        for tivoIP in queue:
-            json_config['count'] += len(queue[tivoIP])
+        with active_tivos_lock:
+            for tivoIP in active_tivos:
+                with active_tivos[tivoIP]['lock']:
+                    json_config['count'] += len(active_tivos[tivoIP]['queue'])
 
         handler.send_json(json.dumps(json_config))
 
@@ -493,8 +502,14 @@ class ToGo(Plugin):
         t.quote = quote
         t.folder = folder
         t.status = status
-        if tivoIP in queue:
-            t.queue = queue[tivoIP]
+
+        # pass a snapshot of the tivo's active download queue to the template
+        # so the template doesn't have to deal w/ thread safety issues
+        with active_tivos_lock:
+            if tivoIP in active_tivos:
+                with active_tivos[tivoIP]['lock']:
+                    t.queue = list(active_tivos[tivoIP]['queue'])
+
         t.has_tivodecode = has_tivodecode
         t.has_tivolibre = has_tivolibre
         t.togo_mpegts = config.is_ts_capable(tsn)
@@ -706,7 +721,10 @@ class ToGo(Plugin):
                                 sync_loss_start = cur_byte
                         else:
                             if sync_loss_start != -1:
-                                logger.info('TS sync loss detected: %d - %d' % ((sync_loss_start + bytes_written), (cur_byte + bytes_written)))
+                                logger.info('TS sync loss detected: {} bytes at offset {} - {}'
+                                            .format(cur_byte - sync_loss_start,
+                                                    sync_loss_start + bytes_written,
+                                                    cur_byte + bytes_written))
                                 sync_loss_start = -1
 
                         cur_byte += 188
@@ -741,10 +759,10 @@ class ToGo(Plugin):
                 if not sync_loss:
                     status[url]['error'] = ''
 
-        except Exception as msg:
+        except Exception as e:
             status[url]['error'] = 'Error downloading file'
             status[url]['running'] = False
-            logger.info(msg)
+            logger.error('ToGo.get_tivo_file({}) raised {}: {}'.format(url, e.__class__.__name__, e))
         handle.close()
         f.close()
 
@@ -815,7 +833,8 @@ class ToGo(Plugin):
                 status[url]['retry'] += 1
                 status[url]['ts_error_count'] = 0
                 logger.info('TS sync losses detected, retrying download (%d)' % status[url]['retry'])
-                queue[tivoIP].insert(1, url)
+                with active_tivos[tivoIP]['lock']:
+                    active_tivos[tivoIP]['queue'].insert(1, url)
             else:
                 status[url]['finished'] = True
         else:
@@ -831,23 +850,57 @@ class ToGo(Plugin):
                 status[url]['retry'] += 1
                 status[url]['ts_error_count'] = 0
                 logger.info('TS sync losses detected, retrying download (%d)' % status[url]['retry'])
-                queue[tivoIP].insert(1, url)
+                with active_tivos[tivoIP]['lock']:
+                    active_tivos[tivoIP]['queue'].insert(1, url)
             else:
                 status[url]['finished'] = True
                 #del status[url]
 
     def process_queue(self, tivoIP, mak, togo_path):
         PreventComputerFromSleeping(True)
-        while queue[tivoIP]:
-            url = queue[tivoIP][0]
+        with active_tivos_lock:
+            tivo_tasks = active_tivos[tivoIP]
+            with tivo_tasks['lock']:
+                queue_cnt = len(tivo_tasks['queue'])
+
+        while True:
+            tivo_tasks['lock'].acquire()
+            if tivo_tasks['queue']:
+                url = tivo_tasks['queue'][0]
+                tivo_tasks['lock'].release()
+            else:
+                # Complicated but... before we delete the tivo from the
+                # list of active tivos we need to release the tasks lock
+                # in case someone else is waiting to add an entry and
+                # then we can acquire the active tivo lock and the tasks
+                # lock in the correct order (so we don't deadlock), double
+                # check than no tasks were added while we didn't have the
+                # lock, and only then delete the tivo from the active list.
+                tivo_tasks['lock'].release()
+                with active_tivos_lock:
+                    with tivo_tasks['lock']:
+                        if not tivo_tasks['queue']:
+                            del active_tivos[tivoIP]
+                    break;
+
             print(url)
             self.get_tivo_file(tivoIP, url, mak, togo_path)
-            queue[tivoIP].pop(0)
-        del queue[tivoIP]
-        if len(queue) == 0:
-            PreventComputerFromSleeping(False)
+            with tivo_tasks['lock']:
+                tivo_tasks['queue'].pop(0)
+
+            with active_tivos_lock:
+                if len(active_tivos) == 0:
+                    PreventComputerFromSleeping(False)
 
     def ToGo(self, handler, query):
+        """
+        HTTP command handler to download a set of recordings from a Tivo.
+
+        If there is already a thread downloading recordings from that Tivo,
+        the new recordings will be appended to the existing download task
+        list for that Tivo, otherwise a new task list will be created and
+        a thread spawned to process it.
+        """
         togo_path = config.get_togo('path')
         for name, data in config.getShares():
             if togo_path == name:
@@ -878,12 +931,23 @@ class ToGo(Plugin):
                                   'ts_error_count': 0,
                                   'best_file': '',
                                   'best_error_count': 0}
-                if tivoIP in queue:
-                    queue[tivoIP].append(theurl)
-                else:
-                    queue[tivoIP] = [theurl]
-                    _thread.start_new_thread(ToGo.process_queue,
-                                            (self, tivoIP, tivo_mak, togo_path))
+
+                with active_tivos_lock:
+                    if tivoIP in active_tivos:
+                        with active_tivos[tivoIP]['lock']:
+                            active_tivos[tivoIP]['queue'].append(theurl)
+                    else:
+                        # This might be better - mjl
+                        #active_tivos[tivoIP] = TivoDownload(tivoIP, theurl, tivo_mak, togo_path)
+                        #active_tivos[tivoIP].start()
+
+                        active_tivos[tivoIP] = {'thread': Thread(target=ToGo.process_queue,
+                                                               args=(self, tivoIP, tivo_mak, togo_path)),
+                                                'lock': RLock(),
+                                                'queue': [theurl]}
+
+                        active_tivos[tivoIP]['thread'].start()
+
                 logger.info('[%s] Queued "%s" for transfer to %s' %
                             (time.strftime('%d/%b/%Y %H:%M:%S'),
                              unquote(theurl), togo_path))
@@ -909,13 +973,13 @@ class ToGo(Plugin):
             else:
                 del status[url]
 
-                if tivoIP in queue:
-                    if url in queue[tivoIP]:
-                        queue[tivoIP].remove(url)
+                with active_tivos_lock:
+                    if tivoIP in active_tivos:
+                        with active_tivos[tivoIP]['lock']:
+                            if url in active_tivos[tivoIP]['queue']:
+                                active_tivos[tivoIP]['queue'].remove(url)
 
-                        logger.info('[%s] Removed "%s" from queue' %
-                                    (time.strftime('%d/%b/%Y %H:%M:%S'),
-                                     unquote(url)))
+                                logger.info('Removed "{}" from queue'.format(unquote(url)))
 
 
     def Unqueue(self, handler, query):
@@ -932,6 +996,8 @@ class ToGo(Plugin):
 
 
     def UnqueueAll(self, handler, query):
-        for tivoIP in queue:
-            for url in queue[tivoIP]:
-                self.remove_from_queue(url, tivoIP)
+        with active_tivos_lock:
+            for tivoIP in active_tivos:
+                with active_tivos[tivoIP].lock:
+                    for url in active_tivos[tivoIP].queue:
+                        self.remove_from_queue(url, tivoIP)
