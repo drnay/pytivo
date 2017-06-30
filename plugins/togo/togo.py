@@ -79,7 +79,7 @@ tivo_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj)
                                           urllib.request.HTTPBasicAuthHandler(auth_handler),
                                           urllib.request.HTTPDigestAuthHandler(auth_handler))
 
-tsn = config.get_server('togo_tsn')
+tsn = config.get_togo('tsn')
 if tsn:
     tivo_opener.addheaders.append(('TSN', tsn))
 
@@ -534,7 +534,7 @@ class ToGo(Plugin):
                 while True:
                     fileName = title
 
-                    sortable = bool(config.get_server('togo_sortable_names', False))
+                    sortable = bool(config.get_togo('sortable_names', False))
 
                     if sortable == True:
                         fileName += ' - '
@@ -676,7 +676,7 @@ class ToGo(Plugin):
         now = start_time
         retry_download = False
         sync_loss = False
-        ts_error_mode = config.get_server('togo_ts_error_mode', 'ignore')
+        ts_error_mode = config.get_togo('ts_error_mode', 'ignore')
         try:
             # Download just the header first so remaining bytes are packet aligned for TS
             tivo_header = handle.read(16)
@@ -843,7 +843,7 @@ class ToGo(Plugin):
             PreventComputerFromSleeping(False)
 
     def ToGo(self, handler, query):
-        togo_path = config.get_server('togo_path')
+        togo_path = config.get_togo('path')
         for name, data in config.getShares():
             if togo_path == name:
                 togo_path = data.get('path')
@@ -859,11 +859,20 @@ class ToGo(Plugin):
                 if theurl in status:
                     del status[theurl]
 
-                status[theurl] = {'running': False, 'error': '', 'rate': 0,
-                                  'queued': True, 'size': 0, 'finished': False,
-                                  'decode': decode, 'save': save, 'ts_format': ts_format,
-                                  'retry': 0, 'ts_max_retries': int(config.get_server('togo_ts_max_retries', 0)),
-                                  'ts_error_count': 0, 'best_file': '', 'best_error_count': 0}
+                status[theurl] = {'running': False,
+                                  'error': '',
+                                  'rate': 0,
+                                  'queued': True,
+                                  'size': 0,
+                                  'finished': False,
+                                  'decode': decode,
+                                  'save': save,
+                                  'ts_format': ts_format,
+                                  'retry': 0,
+                                  'ts_max_retries': int(config.get_togo('ts_max_retries', 0)),
+                                  'ts_error_count': 0,
+                                  'best_file': '',
+                                  'best_error_count': 0}
                 if tivoIP in queue:
                     queue[tivoIP].append(theurl)
                 else:

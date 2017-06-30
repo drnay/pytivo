@@ -101,7 +101,10 @@ def get_togo(name, default=None):
     if config.has_option('togo', name):
         return config.get('togo', name)
     else:
-        return default
+        # many togo options used to be in the server section with
+        # the name prefixed w/ 'togo_', so check for those values
+        # before returning the default
+        return get_server('togo_{}'.format(name), default)
 
 def getGUID():
     return str(guid)
@@ -200,7 +203,7 @@ def getShares(tsn=''):
 
     if get_server('nosettings', 'false').lower() in ['false', 'no', 'off']:
         shares.append(('Settings', {'type': 'settings'}))
-    if get_server('tivo_mak') and get_server('togo_path'):
+    if get_server('tivo_mak') and get_togo('path'):
         shares.append(('ToGo', {'type': 'togo'}))
 
     return shares

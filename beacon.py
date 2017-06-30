@@ -156,7 +156,7 @@ class ZCBroadcast:
 
             if info:
                 tsn = info.properties.get(b'TSN')
-                if config.get_server('togo_all'):
+                if config.get_togo('all'):
                     tsn = info.properties.get(b'tsn', tsn)
                 if tsn:
                     if isinstance(tsn, bytes):

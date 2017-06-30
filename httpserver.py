@@ -367,7 +367,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
                                          'info_page.tmpl'))
         t.admin = ''
 
-        if config.get_server('tivo_mak') and config.get_server('togo_path'):
+        if config.get_server('tivo_mak') and config.get_togo('path'):
             t.togo = '<br>Pull from TiVos:<br>'
         else:
             t.togo = ''
