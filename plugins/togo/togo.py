@@ -18,7 +18,7 @@ from Cheetah.Template import Template
 
 import config
 import metadata
-from metadata import tag_data
+from metadata import tag_data, prefix_bin_qty
 from plugin import Plugin
 
 logger = logging.getLogger('pyTivo.togo')
@@ -754,14 +754,19 @@ class ToGo(Plugin):
 
         status[url]['size'] += length
         if status[url]['running']:
-            mega_elapsed = (now - start_time) * 1024 * 1024
-            if mega_elapsed < 1:
-                mega_elapsed = 1
+            end_time = now
+            elapsed = end_time - start_time
+            if elapsed < 1:
+                elapsed = 1
             size = status[url]['size']
-            rate = size * 8.0 / mega_elapsed
-            logger.info('[%s] Done getting "%s" from %s, %d bytes, %.2f Mb/s' %
-                        (time.strftime('%d/%b/%Y %H:%M:%S'), outfile,
-                         tivo_name, size, rate))
+            rate = size / elapsed
+            logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done getting "{fname}" from {tivo_name}, '
+                        '{mbps[0]:.2f} {mbps[1]}B/s ({num_bytes[0]:.3f} {num_bytes[1]}Bytes / {seconds:.0f} s)'
+                        .format(timestamp=datetime.fromtimestamp(end_time),
+                                fname=outfile, tivo_name=tivo_name,
+                                num_bytes=prefix_bin_qty(size),
+                                mbps=prefix_bin_qty(rate),
+                                seconds=elapsed))
 
             status[url]['running'] = False
 

@@ -19,6 +19,7 @@ from lrucache import LRUCache
 
 import config
 import metadata
+from metadata import prefix_bin_qty
 from . import transcode
 from plugin import Plugin, quote
 
@@ -63,29 +64,6 @@ def isodt(iso):
 
 def isogm(iso):
     return int(calendar.timegm(uniso(iso)))
-
-def prefix_bin_qty(n):
-    """
-    Convert n to the largest prefix we know that keeps n > 1,
-    returning the smaller n and the appropriate prefix.
-    e.g. prefix_bin_qty(2048) returns (2, 'K')
-    """
-    # SI prefixes are (and although technically incorrect we'll use
-    # those decimal prefixes instead of the 2 letter binary prefixes):
-    # - k 10^3  kilo  (Ki kibi 2^10)
-    # - M 10^6  mega  (Mi mebi 2^20)
-    # - G 10^9  giga  (Gi gibi 2^30)
-    # - T 10^12 tera  (Ti tibi 2^40)
-    # - P 10^15 peta  (Pi pebi 2^50)
-    # - E 10^18 exa   (Ei exbi 2^60)
-    # - Z 10^21 zetta (Zi zebi 2^70)
-    # - Y 10^24 yotta (Yi yobi 2^80)
-    prefixes = ('', 'K', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y')
-    prefix = 0
-    while n >= 1024 and prefix < len(prefixes):
-        n /= 1024
-        prefix += 1
-    return (n, prefixes[prefix])
 
 class Video(Plugin):
 
