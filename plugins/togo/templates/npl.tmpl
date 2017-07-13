@@ -53,7 +53,7 @@ Pull from $tname
 	  #else
 	    ## This is a show
 		<td>
-		#if 'Url' in $row and not ($row['Url'] in $status and ($status[$row['Url']]['running'] or $status[$row['Url']]['queued'])) and not ('CopyProtected' in $row and $row['CopyProtected'] == 'Yes') and not ('Icon' in $row and $row['Icon'] == 'urn:tivo:image:in-progress-recording')
+		#if 'Url' in $row and not ($row['Url'] in $urlstatus and ($urlstatus[$row['Url']]['running'] or $urlstatus[$row['Url']]['queued'])) and not ('CopyProtected' in $row and $row['CopyProtected'] == 'Yes') and not ('Icon' in $row and $row['Icon'] == 'urn:tivo:image:in-progress-recording')
 			<input type="checkbox" name="Url" value="$row['Url']">
 		#end if
 		</td>
@@ -86,8 +86,8 @@ Pull from $tname
 			$row['displayMajorNumber'] $row['callsign']
 			#end if
 			</span>
-			#if 'Url' in $row and row['Url'] in $status
-				#set $this_status = $status[$row['Url']]
+			#if 'Url' in $row and row['Url'] in $urlstatus
+				#set $this_status = $urlstatus[$row['Url']]
 				#if $this_status['running'] and $this_status['rate'] != 0
 					<div class="transferring">
 					#set $gb = '%.3f GB' % (float($this_status['size']) / (1024 ** 3))
@@ -110,7 +110,7 @@ Pull from $tname
 					</div>
 				#elif $this_status['queued']
 					<div class="queued">
-					Queued: $queue.index($row['Url'])<br>
+					Queued: $this_status['q_pos']<br>
 					<a href="/TiVoConnect?Command=Unqueue&amp;Container=$quote($container)&amp;Url=$quote($row['Url'])&amp;TiVo=$tivoIP">Unqueue</a>
 					</div>
 				#end if
