@@ -1,4 +1,3 @@
-import configparser
 import getopt
 import logging
 import logging.config
@@ -7,6 +6,7 @@ import re
 import socket
 import sys
 import uuid
+import configparser
 from configparser import NoOptionError
 from functools import reduce
 
@@ -26,21 +26,25 @@ special_section_prefixes = ('_tivo_',       # for override setting for a tivo w/
 
 SCRIPTDIR = os.path.dirname(__file__)
 
+# global variables
+tivos = {}
+tivos_found = False
+guid = uuid.uuid4()
+config_files = ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
+configs_found = False
+config = None
+bin_paths = {}
+
+class Error(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
 class Bdict(dict):
     def getboolean(self, x):
         return self.get(x, 'False').lower() in ('1', 'yes', 'true', 'on')
 
 def init(argv):
-    global tivos
-    global guid
     global config_files
-    global tivos_found
-
-    tivos = {}
-    guid = uuid.uuid4()
-    tivos_found = False
-
-    config_files = ['/etc/pyTivo.conf', os.path.join(SCRIPTDIR, 'pyTivo.conf')]
 
     try:
         opts, _ = getopt.getopt(argv, 'c:e:', ['config=', 'extraconf='])
@@ -94,24 +98,23 @@ def tivos_by_ip(tivoIP):
 def get_server(name, default=None):
     if config.has_option('Server', name):
         return config.get('Server', name)
-    else:
-        return default
+    return default
 
 def get_togo(name, default=None):
     if config.has_option('togo', name):
         return config.get('togo', name)
-    else:
-        # many togo options used to be in the server section with
-        # the name prefixed w/ 'togo_', so check for those values
-        # before returning the default
-        return get_server('togo_{}'.format(name), default)
+
+    # many togo options used to be in the server section with
+    # the name prefixed w/ 'togo_', so check for those values
+    # before returning the default
+    return get_server('togo_{}'.format(name), default)
 
 def getGUID():
     return str(guid)
 
 def get_ip(tsn=None):
     try:
-        assert(tsn)
+        assert tsn
         dest_ip = tivos[tsn]['address']
     except:
         dest_ip = '4.2.2.1'
@@ -186,7 +189,7 @@ def getShares(tsn=''):
     shares = [(section, Bdict(config.items(section)))
               for section in config.sections()
               if not (section.startswith(special_section_prefixes)
-                      or section in (special_section_names))
+                      or section in special_section_names)
              ]
 
     tsnsect = '_tivo_' + tsn
@@ -227,8 +230,6 @@ def getOptres(tsn=None):
                 return False
 
 def get_bin(fname):
-    global bin_paths
-
     logger = logging.getLogger('pyTivo.config')
 
     if fname in bin_paths:
@@ -240,7 +241,7 @@ def get_bin(fname):
             bin_paths[fname] = fpath
             return fpath
         else:
-            logger.error('Bad %s path: %s' % (fname, fpath))
+            logger.error('Bad %s path: %s', fname, fpath)
 
     if sys.platform == 'win32':
         fext = '.exe'
@@ -254,14 +255,13 @@ def get_bin(fname):
             bin_paths[fname] = fpath
             return fpath
 
-    logger.warn('%s not found' % fname)
+    logger.warning('%s not found', fname)
     return None
 
 def getFFmpegWait():
     if config.has_option('Server', 'ffmpeg_wait'):
         return max(int(float(config.get('Server', 'ffmpeg_wait'))), 1)
-    else:
-        return 0
+    return 0
 
 def getFFmpegPrams(tsn):
     return get_tsn('ffmpeg_pram', tsn, True)
@@ -286,16 +286,15 @@ def getValidHeights():
 
 # Return the number in list that is nearest to x
 # if two values are equidistant, return the larger
-def nearest(x, list):
-    return reduce(lambda a, b: closest(x, a, b), list)
+def nearest(x, lst):
+    return reduce(lambda a, b: closest(x, a, b), lst)
 
 def closest(x, a, b):
     da = abs(x - a)
     db = abs(x - b)
     if da < db or (da == db and a > b):
         return a
-    else:
-        return b
+    return b
 
 def nearestTivoHeight(height):
     return nearest(height, getValidHeights())
@@ -306,14 +305,12 @@ def nearestTivoWidth(width):
 def getTivoHeight(tsn):
     if is4Ktivo(tsn):
         return 2160
-    else:
-        return [480, 1080][isHDtivo(tsn)]
+    return 1080 if isHDtivo(tsn) else 480
 
 def getTivoWidth(tsn):
     if is4Ktivo(tsn):
         return 3840
-    else:
-        return [544, 1920][isHDtivo(tsn)]
+    return 1920 if isHDtivo(tsn) else 544
 
 def _trunc64(i):
     return max(int(strtod(i)) / 64000, 1) * 64
@@ -335,8 +332,7 @@ def getVideoBR(tsn=None):
         return _k(rate)
     if is4Ktivo(tsn):
         return getMaxVideoBR(tsn)
-    else:
-        return ['4096K', '16384K'][isHDtivo(tsn)]
+    return '16384K' if isHDtivo(tsn) else '4096K'
 
 def getMaxVideoBR(tsn=None):
     rate = get_tsn('max_video_br', tsn)
@@ -350,8 +346,7 @@ def getBuffSize(tsn=None):
         return _k(size)
     if is4Ktivo(tsn):
         return '8192k'
-    else:
-        return ['1024k', '4096k'][isHDtivo(tsn)]
+    return '4096k' if isHDtivo(tsn) else '1024k'
 
 def getMaxAudioBR(tsn=None):
     rate = get_tsn('max_audio_br', tsn)
@@ -363,8 +358,7 @@ def getMaxAudioBR(tsn=None):
 def get_section(tsn):
     if is4Ktivo(tsn):
         return '_tivo_4K'
-    else:
-        return ['_tivo_SD', '_tivo_HD'][isHDtivo(tsn)]
+    return '_tivo_HD' if isHDtivo(tsn) else '_tivo_SD'
 
 def get_tsn(name, tsn=None, raw=False):
     try:
@@ -382,6 +376,7 @@ def get_tsn(name, tsn=None, raw=False):
 # For example, 2K==2000, 2Ki==2048, 2MB==16000000, 2MiB==16777216
 # Algorithm: http://svn.mplayerhq.hu/ffmpeg/trunk/libavcodec/eval.c
 def strtod(value):
+    # pylint: disable=bad-whitespace
     prefixes = {'y': -24, 'z': -21, 'a': -18, 'f': -15, 'p': -12,
                 'n': -9,  'u': -6,  'm': -3,  'c': -2,  'd': -1,
                 'h': 2,   'k': 3,   'K': 3,   'M': 6,   'G': 9,
@@ -402,16 +397,14 @@ def strtod(value):
             # Use powers of 10
             value = float(coef) * pow(10.0, exponent)
     if byte == 'B': # B == Byte, b == bit
-        value *= 8;
+        value *= 8
     return value
 
 def init_logging():
-    if (config.has_section('loggers') and
-        config.has_section('handlers') and
-        config.has_section('formatters')):
-
+    if     (config.has_section('loggers') and
+            config.has_section('handlers') and
+            config.has_section('formatters')):
         logging.config.fileConfig(config_files)
-
     elif getDebug():
         logging.basicConfig(level=logging.DEBUG)
     else:

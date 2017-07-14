@@ -7,7 +7,6 @@ import mimetypes
 import os
 import shutil
 import socket
-import time
 from io import BytesIO
 from email.utils import formatdate
 from urllib.parse import unquote_plus, quote, parse_qs
@@ -15,7 +14,7 @@ from xml.sax.saxutils import escape
 
 from Cheetah.Template import Template
 import config
-from plugin import GetPlugin, EncodeUnicode
+from plugin import GetPlugin
 
 SCRIPTDIR = os.path.dirname(__file__)
 
@@ -51,6 +50,8 @@ UNSUP = '<h3>Unsupported Command</h3> <p>Query:</p> <ul>%s</ul>'
 class TivoHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     def __init__(self, server_address, RequestHandlerClass):
         self.containers = {}
+        self.beacon = None
+        self.in_service = None
         self.stop = False
         self.restart = False
         self.logger = logging.getLogger('pyTivo')
@@ -72,8 +73,8 @@ class TivoHTTPServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
             self.add_container(section, settings)
 
     def handle_error(self, request, client_address):
-        self.logger.exception('Exception during request from %s' %
-                              (client_address,))
+        self.logger.exception('Exception during request from %s',
+                              client_address)
 
     def set_beacon(self, beacon):
         self.beacon = beacon
@@ -87,6 +88,8 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.server_version = 'pyTivo/1.0'
         self.protocol_version = 'HTTP/1.1'
         self.sys_version = ''
+        self.container = None
+        self.cname = None
 
         try:
             http.server.BaseHTTPRequestHandler.__init__(self, request,
@@ -118,11 +121,17 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
 
         if tsn and (not config.tivos_found or tsn in config.tivos):
             attr = config.tivos.get(tsn, {})
+            updated_tivo = False
             if 'address' not in attr:
                 attr['address'] = self.address_string()
+                updated_tivo = True
             if 'name' not in attr:
                 attr['name'] = self.server.beacon.get_name(attr['address'])
+                updated_tivo = True
             config.tivos[tsn] = attr
+            if updated_tivo:
+                self.server.logger.info('TiVo identified from request: %s %s',
+                                        attr['address'], attr['name'])
 
         if '?' in self.path:
             path, opts = self.path.split('?', 1)
@@ -176,14 +185,13 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         return False
 
     def handle_query(self, query, tsn):
-        mname = False
         if 'Command' in query and len(query['Command']) >= 1:
 
             command = query['Command'][0]
 
             # If we are looking at the root container
             if (command == 'QueryContainer' and
-                (not 'Container' in query or query['Container'][0] == '/')):
+                    (not 'Container' in query or query['Container'][0] == '/')):
                 self.root_container()
                 return
 
@@ -294,12 +302,13 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         return False
 
     def log_message(self, format, *args):
-        self.server.logger.info("%s [%s] %s" % (self.address_port_string(),
-                                self.log_date_time_string(), format%args))
+        # pylint: disable=redefined-builtin
+        self.server.logger.info("%s [%s] %s", self.address_port_string(),
+                                self.log_date_time_string(), format%args)
 
     def send_fixed(self, page, mime, code=200, refresh=''):
         squeeze = (len(page) > 256 and mime.startswith('text') and
-            'gzip' in self.headers.get('Accept-Encoding', ''))
+                   'gzip' in self.headers.get('Accept-Encoding', ''))
         if squeeze:
             out = BytesIO()
             gzip.GzipFile(mode='wb', fileobj=out).write(page)
@@ -349,9 +358,8 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
                     settings['content_type'] = mime
                     tsncontainers.append((section, settings))
             except Exception as msg:
-                self.server.logger.error(section + ' - ' + str(msg))
-        t = Template(file = os.path.join(SCRIPTDIR, 'templates',
-                                         'root_container.tmpl'))
+                self.server.logger.error('%s - %s', section, str(msg))
+        t = Template(file=os.path.join(SCRIPTDIR, 'templates', 'root_container.tmpl'))
         if self.server.beacon.bd:
             t.renamed = self.server.beacon.bd.renamed
         else:
@@ -363,8 +371,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.send_xml(str(t))
 
     def infopage(self):
-        t = Template(file = os.path.join(SCRIPTDIR, 'templates',
-                                         'info_page.tmpl'))
+        t = Template(file=os.path.join(SCRIPTDIR, 'templates', 'info_page.tmpl'))
         t.admin = ''
 
         if config.get_server('tivo_mak') and config.get_togo('path'):
@@ -375,17 +382,13 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         for section, settings in config.getShares():
             plugin_type = settings.get('type')
             if plugin_type == 'settings':
-                t.admin += ('<a href="/TiVoConnect?Command=Settings&amp;' +
-                            'Container=' + quote(section) +
-                            '">Settings</a><br>')
+                t.admin += ('<a href="/TiVoConnect?Command=Settings&amp;Container={}">Settings</a><br>'
+                            .format(quote(section)))
             elif plugin_type == 'togo' and t.togo:
                 for tsn in config.tivos:
                     if tsn and 'address' in config.tivos[tsn]:
-                        t.togo += ('<a href="/TiVoConnect?' +
-                            'Command=NPL&amp;Container=' + quote(section) +
-                            '&amp;TiVo=' + config.tivos[tsn]['address'] +
-                            '">' + config.tivos[tsn]['name'] +
-                            '</a><br>')
+                        t.togo += ('<a href="/TiVoConnect?Command=NPL&amp;Container={}&amp;TiVo={}">{}</a><br>'
+                                   .format(quote(section), config.tivos[tsn]['address'], config.tivos[tsn]['name']))
 
         self.send_html(str(t))
 

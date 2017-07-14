@@ -1,16 +1,15 @@
 import os
-import random
-import shutil
 import sys
 import threading
 import time
 import unicodedata
 import logging
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 
 from functools import cmp_to_key
 from operator import attrgetter
-from Cheetah.Filters import Filter
 from lrucache import LRUCache
 
 if os.path.sep == '/':
@@ -24,6 +23,9 @@ class Error:
     CONTENT_TYPE = 'text/html'
 
 def GetPlugin(name):
+    """
+    Get the plugin instance for a type with the given name
+    """
     try:
         module_name = '.'.join(['plugins', name, name])
         module = __import__(module_name, globals(), locals(), name)
@@ -31,30 +33,20 @@ def GetPlugin(name):
         return plugin
     except ImportError as e:
         logger = logging.getLogger('pyTivo.plugin')
-        logger.error('Error no %s plugin exists. Check the type setting for your share.' % name)
-        logger.debug('Exception: %s' % e)
+        logger.error('Error no %s plugin exists. Check the type setting for your share.', name)
+        logger.debug('Exception: %s', e)
         return Error
 
-class EncodeUnicode(Filter):
-    def filter(self, val, **kw):
-        """Encode Unicode strings, by default in UTF-8"""
-
-        encoding = kw.get('encoding', 'utf8')
-
-        if isinstance(val, bytes):
-            try:
-                val = val.decode('utf8')
-            except:
-                if sys.platform == 'darwin':
-                    val = val.decode('macroman')
-                else:
-                    val = val.decode('cp1252')
-        elif not isinstance(val, str):
-            val = str(val)
-        return val.encode(encoding)
-
 class Plugin(object):
+    """
+    Plugin derived classes are singletons. Calling the constructor
+    always returns the same instance.
+    see https://pytivo.sourceforge.io/wiki/index.php/Plugin_Guide
 
+    Derived classes must not have an __init__ method, instead create
+    an init method (so it is only called when the initial instance is
+    created by __new__).
+    """
 
     random_lock = threading.Lock()
 
@@ -73,7 +65,6 @@ class Plugin(object):
 
     def init(self):
         self.logger = logging.getLogger('pyTivo.plugin')
-        pass
 
     def send_file(self, handler, path, query):
         handler.send_content_file(path)
@@ -93,10 +84,12 @@ class Plugin(object):
         return path
 
     def item_count(self, handler, query, cname, files, last_start=0):
-        """Return only the desired portion of the list, as specified by
-           ItemCount, AnchorItem and AnchorOffset. 'files' is either a
-           list of strings, OR a list of objects with a 'name' attribute.
         """
+        Return only the desired portion of the list, as specified by
+        ItemCount, AnchorItem and AnchorOffset. 'files' is either a
+        list of strings, OR a list of objects with a 'name' attribute.
+        """
+
         def no_anchor(handler, anchor):
             handler.server.logger.warning('Anchor not found: ' + anchor)
 
@@ -180,13 +173,12 @@ class Plugin(object):
                     if recurse and isdir:
                         files.extend(build_recursive_list(f))
                     else:
-                       if not filterFunction or filterFunction(f, file_type):
-                           files.append(FileData(f, isdir))
+                        if not filterFunction or filterFunction(f, file_type):
+                            files.append(FileData(f, isdir))
             except:
                 pass
             return files
 
-        subcname = query['Container'][0]
         path = self.get_local_path(handler, query)
 
         file_type = query.get('Filter', [''])[0]
@@ -228,11 +220,11 @@ class Plugin(object):
         sortby = query.get('SortOrder', ['Normal'])[0]
         if filelist.unsorted or filelist.sortby != sortby:
             if force_alpha:
-                filelist.files.sort(key = cmp_to_key(dir_cmp))
+                filelist.files.sort(key=cmp_to_key(dir_cmp))
             elif sortby == '!CaptureDate':
-                filelist.files.sort(key = attrgetter('mdate'), reverse = True)
+                filelist.files.sort(key=attrgetter('mdate'), reverse=True)
             else:
-                filelist.files.sort(key = attrgetter('name'))
+                filelist.files.sort(key=attrgetter('name'))
 
             filelist.sortby = sortby
             filelist.unsorted = False

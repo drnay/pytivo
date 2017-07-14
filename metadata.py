@@ -6,6 +6,7 @@ import os
 import struct
 import subprocess
 import sys
+from enum import Enum
 from datetime import datetime
 from xml.dom import minidom
 from xml.parsers import expat
@@ -48,8 +49,19 @@ HUMAN = {'mpaaRating': {1: 'G', 2: 'PG', 3: 'PG-13', 4: 'R', 5: 'X',
          'starRating': {1: '1', 2: '1.5', 3: '2', 4: '2.5', 5: '3',
                         6: '3.5', 7: '4'},
          'colorCode': {1: 'B & W', 2: 'COLOR AND B & W',
-                        3: 'COLORIZED', 4: 'COLOR'}
-         }
+                       3: 'COLORIZED', 4: 'COLOR'}
+        }
+
+
+class MediaKind(Enum):
+    """This enumeration of values for stik used to be in mutagen.mp4"""
+    MUSIC = [1]
+    AUDIO_BOOK = [2]
+    MUSIC_VIDEO = [6]
+    MOVIE = [9]
+    TV_SHOW = [10]
+    BOOKLET = [11]
+    RINGTONE = [14]
 
 BOM = '\xef\xbb\xbf'
 
@@ -159,8 +171,8 @@ def from_moov(full_path):
     len_desc = 0
 
     try:
-        mp4meta = mutagen.File(str(full_path, 'utf-8'))
-        assert(mp4meta)
+        mp4meta = mutagen.File(full_path)
+        assert mp4meta
     except:
         mp4_cache[full_path] = {}
         return {}
@@ -171,10 +183,10 @@ def from_moov(full_path):
             'tvsh': 'seriesTitle'}
     isTVShow = False
     if 'stik' in mp4meta:
-        isTVShow = (mp4meta['stik'] == mutagen.mp4.MediaKind.TV_SHOW)
+        isTVShow = (mp4meta['stik'] == MediaKind.TV_SHOW)
     else:
         isTVShow = 'tvsh' in mp4meta
-    for key, value in list(mp4meta.items()):
+    for key, value in mp4meta.items():
         if isinstance(value, list):
             value = value[0]
         if key in keys:
@@ -190,7 +202,7 @@ def from_moov(full_path):
                 epstart = key.find('E')
                 seasonstr = key[1:epstart]
                 episodestr = key[epstart+1:]
-                if (seasonstr.isdigit() and episodestr.isdigit()):
+                if seasonstr.isdigit() and episodestr.isdigit():
                     if len(episodestr) < 2:
                         episodestr = '0' + episodestr
                     metadata['episodeNumber'] = seasonstr+episodestr
@@ -208,7 +220,7 @@ def from_moov(full_path):
             metadata['episodeNumber'] = tvsn+tves
         # These keys begin with the copyright symbol \xA9
         elif key == '\xa9day':
-            if isTVShow :
+            if isTVShow:
                 if len(value) == 4:
                     value += '-01-01T16:00:00Z'
                 metadata['originalAirDate'] = value
@@ -249,7 +261,11 @@ def from_moov(full_path):
             items = {'cast': 'vActor', 'directors': 'vDirector',
                      'producers': 'vProducer', 'screenwriters': 'vWriter'}
             try:
-                data = plistlib.readPlistFromString(value)
+                # TODO: this was readPlistFromString which doesn't exist
+                # I don't know if the returned data is still in the same format
+                # AND readPlistFromBytes is deprecated, should use loads, so work
+                # to do when what this does is better understood and can be tested. -mjl 2017-07-14
+                data = plistlib.readPlistFromBytes(value)
             except:
                 pass
             else:
@@ -259,7 +275,7 @@ def from_moov(full_path):
         elif (key == '----:com.pyTivo.pyTivo:tiVoINFO' and
               'plistlib' in sys.modules):
             try:
-                data = plistlib.readPlistFromString(value)
+                data = plistlib.readPlistFromBytes(value)
             except:
                 pass
             else:
@@ -271,21 +287,22 @@ def from_moov(full_path):
 
 def from_mscore(rawmeta):
     metadata = {}
-    keys = {'title': ['Title'],
-            'description': ['Description', 'WM/SubTitleDescription'],
-            'episodeTitle': ['WM/SubTitle'],
-            'callsign': ['WM/MediaStationCallSign'],
-            'displayMajorNumber': ['WM/MediaOriginalChannel'],
-            'originalAirDate': ['WM/MediaOriginalBroadcastDateTime'],
-            'rating': ['WM/ParentalRating'],
-            'credits': ['WM/MediaCredits'], 'genre': ['WM/Genre']}
+    keys = {'title':                ['Title'],
+            'description':          ['Description', 'WM/SubTitleDescription'],
+            'episodeTitle':         ['WM/SubTitle'],
+            'callsign':             ['WM/MediaStationCallSign'],
+            'displayMajorNumber':   ['WM/MediaOriginalChannel'],
+            'originalAirDate':      ['WM/MediaOriginalBroadcastDateTime'],
+            'rating':               ['WM/ParentalRating'],
+            'credits':              ['WM/MediaCredits'],
+            'genre':                ['WM/Genre']}
 
     for tagname in keys:
         for tag in keys[tagname]:
             try:
                 if tag in rawmeta:
                     value = rawmeta[tag][0]
-                    if type(value) not in (str, str):
+                    if not isinstance(value, str):
                         value = str(value)
                     if value:
                         metadata[tagname] = value
@@ -319,7 +336,7 @@ def from_dvrms(full_path):
 
     try:
         rawmeta = mutagen.File(str(full_path, 'utf-8'))
-        assert(rawmeta)
+        assert rawmeta
     except:
         dvrms_cache[full_path] = {}
         return {}
@@ -353,15 +370,15 @@ def from_eyetv(full_path):
             metadata['vDirector'] = [info['DIRECTOR']]
 
         for ptag, etag, ratings in [('tvRating', 'TV_RATING', TV_RATINGS),
-                              ('mpaaRating', 'MPAA_RATING', MPAA_RATINGS),
-                              ('starRating', 'STAR_RATING', STAR_RATINGS)]:
+                                    ('mpaaRating', 'MPAA_RATING', MPAA_RATINGS),
+                                    ('starRating', 'STAR_RATING', STAR_RATINGS)]:
             x = info[etag].upper()
             if x and x in ratings:
                 metadata[ptag] = ratings[x]
 
         # movieYear must be set for the mpaa/star ratings to work
         if (('mpaaRating' in metadata or 'starRating' in metadata) and
-            'movieYear' not in metadata):
+                'movieYear' not in metadata):
             metadata['movieYear'] = eyetv['info']['start'].year
     return metadata
 
@@ -413,7 +430,7 @@ def from_text(full_path):
                     else:
                         metadata[key] = value
             except:
-                logger.exception("from_text failed processing {}".format(metafile))
+                logger.exception("from_text failed processing %s", metafile)
                 raise
 
     for rating, ratings in [('tvRating', TV_RATINGS),
@@ -497,19 +514,19 @@ def from_details(xml):
     showing = xmldoc.getElementsByTagName('showing')[0]
     program = showing.getElementsByTagName('program')[0]
 
-    items = {'description': 'program/description',
-             'title': 'program/title',
-             'episodeTitle': 'program/episodeTitle',
-             'episodeNumber': 'program/episodeNumber',
-             'programId': 'program/uniqueId',
-             'seriesId': 'program/series/uniqueId',
-             'seriesTitle': 'program/series/seriesTitle',
+    items = {'description':     'program/description',
+             'title':           'program/title',
+             'episodeTitle':    'program/episodeTitle',
+             'episodeNumber':   'program/episodeNumber',
+             'programId':       'program/uniqueId',
+             'seriesId':        'program/series/uniqueId',
+             'seriesTitle':     'program/series/seriesTitle',
              'originalAirDate': 'program/originalAirDate',
-             'isEpisode': 'program/isEpisode',
-             'movieYear': 'program/movieYear',
-             'partCount': 'partCount',
-             'partIndex': 'partIndex',
-             'time': 'time'}
+             'isEpisode':       'program/isEpisode',
+             'movieYear':       'program/movieYear',
+             'partCount':       'partCount',
+             'partIndex':       'partIndex',
+             'time':            'time'}
 
     for item in items:
         data = tag_data(showing, items[item])
@@ -759,11 +776,11 @@ def _tdcat_py(full_path, tivo_mak):
 
     count = 0
     for i in range(chunks):
-        chunk_size, data_size, id, enc = struct.unpack('>LLHH',
-                                                       rawdata[count:count + 12])
+        chunk_size, data_size, data_id, enc = struct.unpack('>LLHH',
+                                                            rawdata[count:count + 12])
         count += 12
         data = rawdata[count:count + data_size]
-        xml_data[id] = {'enc': enc, 'data': data, 'start': count + 16}
+        xml_data[data_id] = {'enc': enc, 'data': data, 'start': count + 16}
         count += chunk_size - 12
 
     chunk = xml_data[2]
@@ -788,7 +805,7 @@ def from_tivo(full_path):
     tdcat_path = config.get_bin('tdcat')
     tivo_mak = config.get_server('tivo_mak')
     try:
-        assert(tivo_mak)
+        assert tivo_mak
         if tdcat_path:
             details = _tdcat_bin(tdcat_path, full_path, tivo_mak)
         else:
