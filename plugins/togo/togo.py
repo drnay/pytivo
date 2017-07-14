@@ -60,6 +60,9 @@ double check your <b>tivo_mak</b> setting.</p> <pre>%s</pre>"""
 tnname = os.path.join(SCRIPTDIR, 'templates', 'npl.tmpl')
 NPL_TEMPLATE = open(tnname, 'rb').read().decode('utf-8')
 
+tename = os.path.join(SCRIPTDIR, 'templates', 'error.tmpl')
+ERROR_TEMPLATE = open(tename, 'rb').read().decode('utf-8')
+
 mswindows = (sys.platform == "win32")
 
 tivo_cache = {}     # Cache of TiVo NPL
@@ -488,10 +491,18 @@ class ToGo(Plugin):
 
         if 'TiVo' in query:
             tivoIP = query['TiVo'][0]
-            tsn = config.tivos_by_ip(tivoIP)
-            attrs = config.tivos[tsn]
-            tivo_name = attrs.get('name', tivoIP)
-            tivo_mak = config.get_tsn('tivo_mak', tsn)
+            try:
+                tsn = config.tivos_by_ip(tivoIP)
+                attrs = config.tivos[tsn]
+                tivo_name = attrs.get('name', tivoIP)
+                tivo_mak = config.get_tsn('tivo_mak', tsn)
+            except config.Error as e:
+                logger.error('NPL: %s', e)
+                t = Template(ERROR_TEMPLATE)
+                t.e = e
+                t.additional_info = 'Your browser may have cached an old page'
+                handler.send_html(str(t))
+                return
 
             protocol = attrs.get('protocol', 'https')
             ip_port = '%s:%d' % (tivoIP, attrs.get('port', 443))

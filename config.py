@@ -91,9 +91,15 @@ def write():
     f.close()
 
 def tivos_by_ip(tivoIP):
+    """
+    Get the tsn for a tivo with the given IPv4 address
+    """
     for key, value in tivos.items():
-        if value['address'] == tivoIP:
+        # some tivo entries may not have an 'address' if they were
+        # created from a config _tivo_TSN section
+        if 'address' in value and value['address'] == tivoIP:
             return key
+    raise Error('No TiVo w/ IP:{} was found'.format(tivoIP))
 
 def get_server(name, default=None):
     if config.has_option('Server', name):
