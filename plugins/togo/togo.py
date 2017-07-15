@@ -739,6 +739,8 @@ class ToGo(Plugin):
         Download the first entry in the tivo tasks queue
         """
 
+        logger.info('get_1st_queued_file: Entered')
+
         tivo_name = tivo_tasks['tivo_name']
         mak = tivo_tasks['mak']
         togo_path = tivo_tasks['dest_path']
@@ -761,20 +763,18 @@ class ToGo(Plugin):
         with lock:
             status = tivo_tasks['queue'][0]
             ts_format = status['ts_format']
-            url = status['url'] + ('&Format=video/x-tivo-mpeg-ts' if ts_format else '')
+            url = status['url']
+            dnld_url = url + ('&Format=video/x-tivo-mpeg-ts' if ts_format else '')
             decode = status['decode'] and has_decoder
             save_txt = status['save']
             status.update({'running': True, 'queued': False})
             outfile = ToGo.get_out_file(status, togo_path)
             status['outfile'] = outfile
 
-        logger.info('Starting download to %s', outfile)
-
         try:
-            logger.debug('about to open url')
-            handle = tivo_open(url)
+            handle = tivo_open(dnld_url)
         except Exception as e:                  # pylint: disable=broad-except
-            logger.error('get_1st_queued_file: tivo_open(%s) raised %s: %s', url, e.__class__.__name__, e)
+            logger.error('get_1st_queued_file: tivo_open(%s) raised %s: %s', dnld_url, e.__class__.__name__, e)
             with lock:
                 status['running'] = False
                 status['error'] = str(e)
@@ -789,7 +789,6 @@ class ToGo(Plugin):
                                           bufsize=(512 * 1024))
             f = tivodecode.stdin
         else:
-            logger.debug('about to open file')
             f = open(outfile, 'wb')
 
 
@@ -892,7 +891,7 @@ class ToGo(Plugin):
                 with lock:
                     status['error'] = 'Error downloading file'
                     status['running'] = False
-                logger.error('ToGo.get_1st_queued_file(%s) raised %s: %s', url, e.__class__.__name__, e)
+                logger.error('ToGo.get_1st_queued_file(%s) raised %s: %s', dnld_url, e.__class__.__name__, e)
 
         end_time = time.time()
         elapsed = (end_time - start_time) if end_time >= start_time + 1 else 1
@@ -970,6 +969,7 @@ class ToGo(Plugin):
             with lock:
                 status['finished'] = True
         else:
+            logger.info('get_1st_queued_file: retrying download, adding back to the queue')
             with lock:
                 retry_status = status.copy()
             retry_status.update({'rate': 0,
@@ -998,6 +998,7 @@ class ToGo(Plugin):
             if tivo_tasks['queue']:
                 tivo_tasks['lock'].release()
             else:
+                logger.debug('process_queue: queue is empty for %s', tivoIP)
                 # Complicated but... before we delete the tivo from the
                 # list of active tivos we need to release the tasks lock
                 # in case someone else is waiting to add an entry and
@@ -1014,6 +1015,7 @@ class ToGo(Plugin):
 
             ToGo.get_1st_queued_file(tivo_tasks)
             with tivo_tasks['lock']:
+                logger.debug('process_queue: %s removing 1st queue entry of %d', tivoIP, len(tivo_tasks['queue']))
                 tivo_tasks['queue'].pop(0)
 
             with active_tivos_lock:
