@@ -262,6 +262,7 @@ def get_bin(fname):
             return fpath
 
     logger.warning('%s not found', fname)
+    bin_paths[fname] = None
     return None
 
 def getFFmpegWait():
