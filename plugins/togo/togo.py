@@ -273,8 +273,8 @@ class ToGo(Plugin):
 
                     ep_info = {'seriesID':      SeriesID,
                                'episodeID':     EpisodeID,
-                               'title':         tag_data(item, 'Details/Title'),
                                'url':           tag_data(item, 'Links/Content/Url'),
+                               'title':         tag_data(item, 'Details/Title'),
                                'detailsUrl':    tag_data(item, 'Links/TiVoVideoDetails/Url'),
                                'episodeTitle':  tag_data(item, 'Details/EpisodeTitle'),
                                'description':   tag_data(item, 'Details/Description'),
@@ -375,7 +375,8 @@ class ToGo(Plugin):
 
         handler.send_json(json.dumps(json_config))
 
-    def GetStatus(self, handler, query):
+    @staticmethod
+    def GetStatus(handler, query):
         """
         HTTP command handler to return the status of a given queued recording
         identified by its download url.
@@ -398,7 +399,7 @@ class ToGo(Plugin):
         lock = None
         if 'Url' in query:
             url = query['Url'][0]
-            status, lock = self.get_status(url)
+            status, lock = ToGo.get_status(url)
 
         if not lock:
             # no Url or no status found for url
@@ -467,7 +468,19 @@ class ToGo(Plugin):
 
         return urlstatus
 
-    def NPL(self, handler, query):
+    @staticmethod
+    def NPL(handler, query):
+        """
+        ToGo.NPL returns an html page displaying the now playing list (NPL)
+        from a particular TiVo device.
+        The query may specify:
+        - TiVo: the IPv4 address of the TiVo whose NPL is to be retrieved
+        - ItemCount: the number of shows/folders to put on the page (default: 50, max: 50)
+        - AnchorItem: the url identifying the 1st item in the retrieved list (default 1st item in folder)
+        - AnchorOffset: the offset from the AnchorItem to start the retrieval from (default 0)
+        - SortOrder:
+        - Recurse:
+        """
 
         def getint(thing):
             try:
@@ -529,13 +542,12 @@ class ToGo(Plugin):
                 logger.debug('NPL: (1) add password for TiVo DVR netloc: %s', ip_port)
                 try:
                     logger.debug("NPL.theurl: %s", theurl)
-                    page = tivo_open(theurl)
+                    with tivo_open(theurl) as page:
+                        tivo_cache[theurl] = {'thepage': minidom.parse(page),
+                                              'thepage_time': time.time()}
                 except IOError as e:
                     handler.redir(UNABLE % (tivoIP, html.escape(str(e))), 10)
                     return
-                tivo_cache[theurl] = {'thepage': minidom.parse(page),
-                                      'thepage_time': time.time()}
-                page.close()
 
             xmldoc = tivo_cache[theurl]['thepage']
             items = xmldoc.getElementsByTagName('Item')
@@ -580,9 +592,9 @@ class ToGo(Plugin):
                         entry['SourceSize'] = metadata.human_size(rawsize)
 
                     if 'Duration' in entry:
-                        dur = getint(entry['Duration']) / 1000
+                        dur = getint(entry['Duration']) // 1000
                         entry['Duration'] = ('%d:%02d:%02d' %
-                                             (dur / 3600, (dur % 3600) / 60, dur % 60))
+                                             (dur // 3600, (dur % 3600) // 60, dur % 60))
 
                     if 'CaptureDate' in entry:
                         entry['CaptureDate'] = time.strftime('%b %d, %Y',
@@ -613,7 +625,7 @@ class ToGo(Plugin):
         t = Template(NPL_TEMPLATE)
         t.quote = quote
         t.folder = folder
-        t.urlstatus = self.get_urlstatus(tivoIP)
+        t.urlstatus = ToGo.get_urlstatus(tivoIP)
         t.has_tivodecode = has_tivodecode
         t.has_tivolibre = has_tivolibre
         t.togo_mpegts = config.is_ts_capable(tsn)
@@ -738,9 +750,6 @@ class ToGo(Plugin):
         """
         Download the first entry in the tivo tasks queue
         """
-
-        logger.info('get_1st_queued_file: Entered')
-
         tivo_name = tivo_tasks['tivo_name']
         mak = tivo_tasks['mak']
         togo_path = tivo_tasks['dest_path']
@@ -773,6 +782,11 @@ class ToGo(Plugin):
 
         try:
             handle = tivo_open(dnld_url)
+        except ConnectionResetError as e:
+            with lock:
+                status['running'] = False
+                status['error'] = str(e)
+            return
         except Exception as e:                  # pylint: disable=broad-except
             logger.error('get_1st_queued_file: tivo_open(%s) raised %s: %s', dnld_url, e.__class__.__name__, e)
             with lock:
@@ -962,8 +976,9 @@ class ToGo(Plugin):
         else:
             # aborted download
             os.remove(outfile)
-            logger.info('[%s] Transfer of "%s" from %s aborted',
-                        time.strftime('%d/%b/%Y %H:%M:%S'), outfile, tivo_name)
+            with lock:
+                logger.info('[%s] Aborted transfer (%s) of "%s" from %s',
+                            time.strftime('%d/%b/%Y %H:%M:%S'), status['error'], outfile, tivo_name)
 
         if not retry_download:
             with lock:
