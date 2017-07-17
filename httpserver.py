@@ -98,8 +98,17 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
             server.logger.exception('Exception initializing the BaseHTTPRequestHandler')
 
     def setup(self):
+        """
+        Called before the handle() method to perform any initialization actions required.
+        see https://docs.python.org/3/library/socketserver.html
+        """
         http.server.BaseHTTPRequestHandler.setup(self)
-        self.request.settimeout(180) # This allows pyTivo to die when user selects Stop Transfer on the TiVo
+
+        # This allows pyTivo to die when user selects Stop Transfer on the TiVo
+        # (If no request is received within timeout seconds, handle_timeout() will be called,
+        # see https://docs.python.org/3/library/socketserver.html#socketserver.BaseServer.handle_request
+        # also note that a "Request timed out:" info message will be logged.)
+        self.request.settimeout(180)
 
 
     def address_port_string(self):
