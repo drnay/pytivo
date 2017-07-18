@@ -80,6 +80,19 @@ Example Settings: Linux = /usr/bin/ffmpeg |
 >Windows = C:\pyTivo\bin\ffmpeg.exe
 Available In: Server
 
+tivolibre
+
+Default Setting: None
+Valid Entries: Operating system path
+Required: No
+Description: This is the full path to your tivolibre binary. If not 
+set, pyTivo checks for it in a "bin" subdirectory, and then in the PATH.
+tivolibre is only needed for certain functions (currently transcoding 
+HD .TiVo files to SD and decoding downloaded files).
+Example Settings: Linux = /usr/bin/tivolibre.sh |
+>Windows = C:\pyTivo\bin\tivodecode.exe
+Available In: Server
+
 tivodecode
 
 Default Setting: None
@@ -386,12 +399,53 @@ togo_path
 Default Setting: None
 Valid Entries: System path or share name
 Required: No
-Description: The path used to save programs downloaded via the ToGo 
+Description: [Deprecated] use the path in the togo section.
+The path used to save programs downloaded via the ToGo 
 menu. It can be either a direct path, or the name of a share, in which 
 case pyTivo will use the path specified for the share. If you don't plan 
 to use the ToGo feature, you need not set this.
 Example Settings: My Videos, /home/user/Videos
 Available In: Server
+
+path
+
+Default Setting: None
+Valid Entries: System path or share name
+Required: No
+Description: The path used to save programs downloaded via the ToGo 
+menu. It can be either a direct path, or the name of a share, in which 
+case pyTivo will use the path specified for the share. If you don't plan 
+to use the ToGo feature, you need not set this.
+Example Settings: My Videos, /home/user/Videos
+Available In: togo
+
+ts_error_mode
+
+Mode: select
+Options: ignore/best/reject
+Default Setting: ignore
+Valid Entries: ignore/best/reject
+Required: No
+Description: Current TiVos (as of June 2017 at least) have a bug where
+the Transport stream (TS) data being sent is corrupted (losing sync),
+pytivo can attempt to recognize the corruption and try again.
+The togo_ts_error_mode may be set one of the following:
+  ignore : Ignore any errors encountered and just save what is sent
+  reject : abort the download as soon as an error is detected
+  best   : keep the file with the least number of errors detected
+Example Settings: ignore/best/reject
+Available In: togo
+
+ts_max_retries
+
+Default Setting: 1
+Valid Entries: 1-65535
+Required: No
+Description: Used only when ts_error_mode is best or reject, in which
+case it limits the number of retries for getting a valid (if reject)
+or best download.
+Example Settings: 3
+Available In: togo
 
 zeroconf
 

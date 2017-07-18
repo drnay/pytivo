@@ -67,7 +67,7 @@ def reset():
 
     bin_paths = {}
 
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(interpolation=None)
     configs_found = config.read(config_files)
     if not configs_found:
         print(('WARNING: pyTivo.conf does not exist.\n'
@@ -210,7 +210,7 @@ def getShares(tsn=''):
 
     shares.sort()
 
-    if get_server('nosettings', 'false').lower() in ['false', 'no', 'off']:
+    if not config.getboolean('Server', 'nosettings', fallback=False):
         shares.append(('Settings', {'type': 'settings'}))
     if get_server('tivo_mak') and get_togo('path'):
         shares.append(('ToGo', {'type': 'togo'}))

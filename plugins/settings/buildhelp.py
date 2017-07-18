@@ -48,7 +48,7 @@ finally:
     f.close()
 ## Done building help list
 plugins = [p for p in os.listdir(os.path.dirname(SCRIPTDIR))
-           if not p.startswith(('__init__', 'togo', 'settings'))]
+           if not p.startswith(('__init__', '__pycache__', 'togo', 'settings'))]
 options['type'] = plugins
 
 def gethelp():

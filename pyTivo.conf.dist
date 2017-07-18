@@ -9,7 +9,15 @@
 # http://pytivo.sourceforge.net
 
 [Server]
-port=9032
+# This is the port that pyTivo's http server uses for its webinterface
+# it defaults to 9032 if not specified here.
+port = 9032
+
+# Your Media Access Key is needed for all togo functionality and also
+# to decode .tivo files to be uploaded to the TiVo. A value must be
+# specified here to enable togo functionality (along with a path in the
+# togo section).
+#tivo_mak = <Your Media Access Key>
 
 # FFmpeg is a required tool but downloaded separately.  See pyTivo wiki 
 # for help.
@@ -18,6 +26,29 @@ port=9032
 # For linux:   ffmpeg=/usr/bin/ffmpeg
 #ffmpeg=C:\pyTivo\bin\ffmpeg.exe
 ffmpeg=/usr/bin/ffmpeg
+
+# If either tivolibre or tivodecode are available you can specify where
+# they are located, if they aren't found in your path. tivolibre is more
+# capable than tivodecode as it can also handle TS downloaded files
+# and will be used if both are found.
+#tivolibre = /home/armooo/bin/tivolibre.sh
+#tivodecode = /usr/bin/tivodecode
+
+# Beacon broadcast address(es)
+# The default is 255.255.255.255, but on some multihomed machines you 
+# may need to specify the subnet broadcast address(es) of your Tivo 
+# boxes. You can also specify "listen" to listen for direct connection 
+# attempts on port 2190, for use with the "Manually add a server..." 
+# function. (And if you set beacon to listen _only_, it turns off 
+# broadcasts.)
+#beacon=192.168.1.255 listen
+
+# The ts setting says to tell the TiVo it should request a transport stream
+# download (upload from pyTivo) of a video. Use auto to let pyTivo
+# determine what to tell the TiVo based on the file's extension, or
+# True/False (also On/Off) to force what is sent to the TiVo.
+# auto is the default if not specified
+#ts = auto
 
 # Setting this to True will log more ouput for debugging purposes.
 #debug=False
@@ -33,31 +64,42 @@ ffmpeg=/usr/bin/ffmpeg
 # Video bit-rate, defaults to 4096K for S2, 8192K for S3/HD
 #video_br=12Mi
 
-# Beacon broadcast address(es)
-# The default is 255.255.255.255, but on some multihomed machines you 
-# may need to specify the subnet broadcast address(es) of your Tivo 
-# boxes. You can also specify "listen" to listen for direct connection 
-# attempts on port 2190, for use with the "Manually add a server..." 
-# function. (And if you set beacon to listen _only_, it turns off 
-# broadcasts.)
-#beacon=192.168.1.255 listen
-
 # Togo settings:
 # Set this up if you wish to have TiVo ToGo support.  This allows you to
 # copy videos from your TiVo via a web page. 
-#
-#tivo_mak=<Your Media Access Key>
-#togo_path=<path where movies will go or a section name>
+[togo]
+#path=<path where movies will go or a section name>
+
+# Current TiVos (as of June 2017 at least) have a bug where the Transport stream (TS)
+# data being sent is corrupted (losing sync), pytivo can attempt to recognize the
+# corruption and try again.
+# The togo_ts_error_mode may be set one of the following:
+#   ignore : Ignore any errors encountered and just save what is sent
+#   reject : abort the download as soon as an error is detected
+#   best   : keep the file with the least number of errors detected
+#ts_error_mode = [ignore | best | reject]
+ts_error_mode = ignore
+
+# ts_max_retries only applies when ts_error_mode is best or reject
+ts_max_retries = 3
 
 # Per tivo options
 # section named _tivo_TSN with the tsn in all caps
 #[_tivo_00000DEADBEEF]
+
+# You can override the MAK specified in the Server section for
+# this particular TiVo
+#tivo_mak = <Your Media Access Key>
 
 # If you want to use 16:9 or 4:3 on this tivo
 #aspect169=true
 
 #audio_br=320K
 #video_br=12Mi
+
+#[_tivo_4K]
+# section for default video options applicable to all 4K capable TiVos
+# see pyTivo Settings for all available settings
 
 #[_tivo_HD]
 # section for default video options applicable to all HD TiVos
@@ -80,3 +122,34 @@ path=/home/armooo/Videos
 #[MyTelevision]
 #type=video
 #path=d:\television
+
+# For more extensive logging control you can use the following sections.
+# The options specified are only an example.
+# See https://docs.python.org/3/library/logging.config.html#configuration-file-format
+#[loggers]
+#keys = root
+#
+#[handlers]
+#keys = console,rotfile
+#
+#[formatters]
+#keys = basicform
+#
+#[logger_root]
+#level = DEBUG
+#handlers = console,rotfile
+##handlers = console
+#
+#[handler_console]
+#level = INFO
+#class = StreamHandler
+#formatter = basicform
+#args = (sys.stdout,)
+#
+#[handler_rotfile]
+#class = handlers.RotatingFileHandler
+#formatter = basicform
+#args = ('/home/armooo/tmp/pytivo_debug.log', 'a', 256000, 4)
+#
+#[formatter_basicform]
+#format = %(asctime)s %(levelname)-5s %(name)s: %(message)s 

@@ -124,6 +124,7 @@
          onchange="switchDiv(options[selectedIndex].value, 'set-');
          return true;">
         <option value="set-server">Global Server Settings</option>
+        <option value="set-togo">To Go Settings</option>
         <option value="set-fk_tivos">4K TiVo Settings</option>
         <option value="set-hd_tivos">HD TiVo Settings</option>
         <option value="set-sd_tivos">SD TiVo Settings</option>
@@ -175,6 +176,12 @@
 	<b>Global Server Settings</b><br>
         $rows('Server', $server_data, $server_known)
         $add_setting('server', 'Server')
+</div>
+
+<div id="set-togo" class="sett-sect">
+	<b>To Go Settings</b><br>
+        $rows('togo', $togo_data, $togo_known)
+        $add_setting('togo', 'togo')
 </div>
 
 <div id="set-fk_tivos" class="sett-sect">
