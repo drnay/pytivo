@@ -473,6 +473,10 @@ def basic(full_path, mtime=None):
     return metadata
 
 def from_container(xmldoc):
+    """
+    Get the metadata of interest from the xml sent by a TiVo for items in a
+    container (folder)
+    """
     metadata = {}
 
     keys = {'title':            'Title',

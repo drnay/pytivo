@@ -312,8 +312,13 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         # pylint: disable=redefined-builtin
-        self.server.logger.info("%s [%s] %s", self.address_port_string(),
-                                self.log_date_time_string(), format%args)
+
+        # we really don't need to log the "Request timed out:" messages
+        if isinstance(args[0], socket.timeout):
+            return
+
+        self.server.logger.info("[%s] %s %s", self.log_date_time_string(),
+                                self.address_string(), format%args)
 
     def send_fixed(self, page, mime, code=200, refresh=''):
         squeeze = (len(page) > 256 and mime.startswith('text') and

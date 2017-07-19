@@ -876,14 +876,15 @@ class ToGo(Plugin):
                                     if status['retry'] > 0:
                                         if status['ts_error_count'] >= status['best_error_count']:
                                             status['running'] = False
-                                            status['error'] = 'Transport stream error detected'
+                                            status['error'] = ('TS sync error. Best({}) < Current({})'
+                                                               .format(status['best_error_count'], status['ts_error_count']))
                                             break
 
                                 # if we don't want to keep a download with any errors
                                 # abort now (we'll try again if there were tries left)
                                 elif ts_error_mode == 'reject':
                                     status['running'] = False
-                                    status['error'] = 'Transport stream error detected'
+                                    status['error'] = 'TS sync error. Mode: reject'
                                     break
 
                     f.write(output)
@@ -905,7 +906,13 @@ class ToGo(Plugin):
                 with lock:
                     status['error'] = 'Error downloading file'
                     status['running'] = False
-                logger.error('ToGo.get_1st_queued_file(%s) raised %s: %s', dnld_url, e.__class__.__name__, e)
+                    # If we've got retries left (even though this is aborting
+                    # due to an exception let's try again
+                    if status['retry'] < ts_max_retries:
+                        retry_download = True
+                logger.error('ToGo.get_1st_queued_file(%s) raised %s: %s\n\tr:%s; w:%s; retry: %s',
+                             dnld_url, e.__class__.__name__, e, format(bytes_read, ',d'),
+                             format(bytes_written, ',d'), 'yes' if retry_download else 'no')
 
         end_time = time.time()
         elapsed = (end_time - start_time) if end_time >= start_time + 1 else 1
@@ -984,7 +991,7 @@ class ToGo(Plugin):
             with lock:
                 status['finished'] = True
         else:
-            logger.info('get_1st_queued_file: retrying download, adding back to the queue')
+            logger.debug('get_1st_queued_file: retrying download, adding back to the queue')
             with lock:
                 retry_status = status.copy()
             retry_status.update({'rate': 0,
@@ -993,8 +1000,8 @@ class ToGo(Plugin):
                                  'retry': retry_status['retry'] + 1,
                                  'ts_error_count': 0})
 
-            logger.info('TS sync losses detected, retrying download (%s)',
-                        retry_status['retry'])
+            logger.info('Transfer error detected, retrying download (%d/%d)',
+                        retry_status['retry'], ts_max_retries)
             with lock:
                 tivo_tasks['queue'][1:1] = [retry_status]
 
