@@ -89,6 +89,7 @@ Install these python packages (with pip):
 - mutagen
 - cheetah3
 - pytz
+- tzlocal
 
 The required python packages are in `requirements.txt` and may be installed by running:
 
@@ -96,7 +97,7 @@ The required python packages are in `requirements.txt` and may be installed by r
 
 ## Development TODO
 
-### Python 3 conversion
+### Python 3 conversion (Done)
 
 - Start from latest code in wmcbrine's pytivo repository
 - run 2to3 over all files
@@ -119,7 +120,13 @@ this point how to test them.
 
 Next:
 
-- Merge in desired changes from Dan203's [fork][dan203 pytivo]
+- (**Done** - 1.6.7) Merge in desired changes from Dan203's [fork][dan203 pytivo]
+- Refactor togo plugin for clarity and thread safety
+    - (**Done**) extract download thread functionity into separate module/class
+    - NPL (should be looked at, may or may not need changes)
+- Add something like kmttg's naming for saving togo files
+    - (**Done**) Create new ShowInfo class to encapsulate a show's metadata
+    - Some metadata is no longer being supplied from the TiVo, may have to get it from [mind][tivo mind thread]
 - [Pre-compile][cheetah compile] the Cheetah templates [sample makefile][cheetah makefile tip]
 - see if it makes sense to replace `lrucache.py` with [`@functools.lru_cache`][lru_cache] decorator
 - see if it makes sense to replace [`urllib.request`][py3 urllib.request] with the
@@ -129,7 +136,6 @@ Next:
 - use subprocess.run instead of Popen where it makes sense.
 - consistently return a ffmpeg options in lists not strings in transcode.py
 - enhance web UI (not even sure what that means yet)
-- Add something like kmttg's naming for saving togo files
 
 [cheetah makefile tip]: <https://pythonhosted.org/Cheetah/users_guide/tipsAndTricks.html#makefiles>
 [cheetah compile]: <https://pythonhosted.org/Cheetah/recipes/precompiled.html>
@@ -139,3 +145,4 @@ Next:
 [py3 requests pkg]: <http://docs.python-requests.org/en/master/>
 [py3 configparser]: <https://docs.python.org/3/library/configparser.html?highlight=configparser#module-configparser>
 [py3 config legacy]: <https://docs.python.org/3/library/configparser.html?highlight=configparser#legacy-api-examples>
+[tivo mind thread]: <https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=4&cad=rja&uact=8&ved=0ahUKEwi97OrQk6PVAhVFFT4KHZg7ASkQFgg4MAM&url=http%3A%2F%2Fwww.tivocommunity.com%2Fcommunity%2Findex.php%3Fthreads%2Fwhich-tivo-api-for-show-list-and-forced-playing-on-tivo.539075%2F&usg=AFQjCNHBHt_ng1m_03xDNk_04hj1ewTTtA>
