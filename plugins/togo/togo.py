@@ -2,25 +2,23 @@ import html
 import http.cookiejar
 import logging
 import os
-import subprocess
 import sys
 import time
 import json
-import struct
 import urllib.request
 import urllib.error
-from urllib.parse import urlparse, urljoin, urlsplit, quote, unquote
+from urllib.parse import urljoin, urlsplit, quote, unquote
 from xml.dom import minidom
-from datetime import datetime
-from threading import Thread, RLock
+from threading import RLock
 
 from Cheetah.Template import Template
 
-import pytz
 import config
 import metadata
-from metadata import tag_data, prefix_bin_qty
+from metadata import tag_data
 from plugin import Plugin
+from showinfo import ShowInfo
+from .tivodownload import TivoDownload
 
 logger = logging.getLogger('pyTivo.togo')
 
@@ -67,8 +65,10 @@ mswindows = (sys.platform == "win32")
 
 tivo_cache = {}     # Cache of TiVo NPL
 json_cache = {}     # Cache of TiVo json NPL data
-basic_meta = {}     # Data from NPL, parsed, indexed by program URL
-details_urls = {}   # URLs for extended data, indexed by main URL
+
+# All the information gathered about a particular show (a ShowInfo instance)
+# indexed by the show's download url
+showinfo = {}
 
 # An entry in the active_tivos dict is created with a list of recordings
 # to download for each TiVo (ie the key unique to a TiVo (usually
@@ -253,65 +253,32 @@ class ToGo(Plugin):
                     break
 
                 for item in items:
-                    SeriesID = tag_data(item, 'Details/SeriesId')
-                    if not SeriesID:
-                        SeriesID = 'TS%08d' % GeneratedID
+                    dnld_url = tag_data(item, 'Links/Content/Url')
+                    # the tivo download url seems to always be absolute, so is this necessary?
+                    # I'm commenting it out -mjl 7/23/2017
+                    #dnld_url = urljoin(baseurl, dnld_url)
+                    if not dnld_url in showinfo:
+                        showinfo[dnld_url] = ShowInfo().from_tivo_container_item(item)
+                    item_showinfo = showinfo[dnld_url]
+                    ep_info = item_showinfo.get_tivo_desktop_info()
+
+                    if not ep_info['seriesID']:
+                        ep_info['seriesID'] = 'TS%08d' % GeneratedID
                         GeneratedID += 1
 
-                    if not SeriesID in json_config:
-                        json_config[SeriesID] = {}
-
-                    EpisodeID = tag_data(item, 'Details/ProgramId')
-                    if not EpisodeID:
-                        EpisodeID = 'EP%08d' % GeneratedID
+                    if not ep_info['episodeID']:
+                        ep_info['episodeID'] = 'EP%08d' % GeneratedID
                         GeneratedID += 1
+
+                    if not ep_info['seriesID'] in json_config:
+                        json_config[ep_info['seriesID']] = {}
 
                     # Check for duplicate episode IDs and replace with generated ID
-                    while EpisodeID in json_config[SeriesID]:
-                        EpisodeID = 'EP%08d' % GeneratedID
+                    while ep_info['episodeID'] in json_config[ep_info['seriesID']]:
+                        ep_info['episodeID'] = 'EP%08d' % GeneratedID
                         GeneratedID += 1
 
-                    ep_info = {'seriesID':      SeriesID,
-                               'episodeID':     EpisodeID,
-                               'url':           tag_data(item, 'Links/Content/Url'),
-                               'title':         tag_data(item, 'Details/Title'),
-                               'detailsUrl':    tag_data(item, 'Links/TiVoVideoDetails/Url'),
-                               'episodeTitle':  tag_data(item, 'Details/EpisodeTitle'),
-                               'description':   tag_data(item, 'Details/Description'),
-                               'recordDate':    tag_data(item, 'Details/CaptureDate'),
-                               'duration':      tag_data(item, 'Details/Duration'),
-                               'sourceSize':    tag_data(item, 'Details/SourceSize'),
-                               'channel':       tag_data(item, 'Details/SourceChannel'),
-                               'stationID':     tag_data(item, 'Details/SourceStation'),
-                               'inProgress':    tag_data(item, 'Details/InProgress') == 'Yes',
-                               'isProtected':   tag_data(item, 'Details/CopyProtected') == 'Yes',
-                               'isSuggestion':  tag_data(item, 'Links/CustomIcon/Url') == 'urn:tivo:image:suggestion-recording',
-                               'icon':          'normal',
-                              }
-
-                    json_config[SeriesID][EpisodeID] = ep_info
-
-                    # check if an icon other than normal should be used for the episode
-                    custom_icon_url = tag_data(item, 'Links/CustomIcon/Url')
-                    if ep_info['isProtected']:
-                        ep_info['icon'] = 'protected'
-                    elif custom_icon_url == 'urn:tivo:image:expires-soon-recording':
-                        ep_info['icon'] = 'expiring'
-                    elif custom_icon_url == 'urn:tivo:image:expired-recording':
-                        ep_info['icon'] = 'expired'
-                    elif custom_icon_url == 'urn:tivo:image:save-until-i-delete-recording':
-                        ep_info['icon'] = 'kuid'
-                    elif custom_icon_url == 'urn:tivo:image:suggestion-recording':
-                        ep_info['icon'] = 'suggestion'
-                    elif custom_icon_url == 'urn:tivo:image:in-progress-recording':
-                        ep_info['icon'] = 'inprogress'
-
-                    url = urljoin(baseurl, ep_info['url'])
-                    ep_info['url'] = url
-                    if not url in basic_meta:
-                        basic_meta[url] = metadata.from_container(item)
-                        if 'detailsUrl' in ep_info:
-                            details_urls[url] = ep_info['detailsUrl']
+                    json_config[ep_info['seriesID']][ep_info['episodeID']] = ep_info
 
                 itemCount = tag_data(xmldoc, 'TiVoContainer/ItemCount')
                 try:
@@ -600,16 +567,15 @@ class ToGo(Plugin):
                         entry['CaptureDate'] = time.strftime('%b %d, %Y',
                                                              time.localtime(int(entry['CaptureDate'], 16)))
 
-                    url = urljoin(baseurl, entry['Url'])
-                    entry['Url'] = url
-                    if url in basic_meta:
-                        entry.update(basic_meta[url])
-                    else:
-                        basic_data = metadata.from_container(item)
-                        entry.update(basic_data)
-                        basic_meta[url] = basic_data
-                        if 'Details' in entry:
-                            details_urls[url] = entry['Details']
+                    dnld_url = entry['Url']
+                    # the tivo download url seems to always be absolute, so is this necessary?
+                    # I'm commenting it out -mjl 7/23/2017
+                    #dnld_url = urljoin(baseurl, dnld_url)
+                    if not dnld_url in showinfo:
+                        showinfo[dnld_url] = ShowInfo()
+                        showinfo[dnld_url].from_tivo_container_item(item)
+
+                    entry.update(showinfo[dnld_url].get_old_basicmeta())
 
                 data.append(entry)
         else:
@@ -644,407 +610,6 @@ class ToGo(Plugin):
 
 
     @staticmethod
-    def get_out_file(status, togo_path):
-        """
-        Get the full file path for the tivo recording to be downloaded (status['url'].
-        The returned path will be to a non existent file.
-        """
-
-        url = status['url']
-        decode = status['decode']
-        ts_format = status['ts_format']
-        sortable = status['sortable']
-
-        # Use TiVo Desktop style naming
-        if url in basic_meta:
-            if 'title' in basic_meta[url]:
-                title = basic_meta[url]['title']
-
-                episodeTitle = ''
-                if 'episodeTitle' in basic_meta[url]:
-                    episodeTitle = basic_meta[url]['episodeTitle']
-
-                recordDate = datetime.now()
-                if 'recordDate' in basic_meta[url]:
-                    recordDate = datetime.fromtimestamp(int(basic_meta[url]['recordDate'], 0), pytz.utc)
-
-                callsign = ''
-                if 'callsign' in basic_meta[url]:
-                    callsign = basic_meta[url]['callsign']
-
-                fileParts = {'title':           title,
-                             'recordDate':      recordDate,
-                             'episodeTitle':    " - ''{}''".format(episodeTitle) if episodeTitle else '',
-                             'callsign':        ', {}'.format(callsign) if callsign else '',
-                             'tivo_stream_type': '',
-                            }
-
-                if decode:
-                    fileExt = '.ts' if ts_format else '.ps'
-                else:
-                    fileExt = '.tivo'
-                    fileParts['tivo_stream_type'] = ' (TS)' if ts_format else ' (PS)'
-
-                fnFmt = "{title}{episodeTitle} (Recorded {recordDate:%b %d, %Y}{callsign}){tivo_stream_type}"
-                if sortable:
-                    fnFmt = "{title} - {recordDate:%Y-%m-%d}{episodeTitle}{callSign}{tivo_stream_type}"
-                    fileParts['callsign'] = ' ({})'.format(callsign) if callsign else ''
-
-                fileName = fnFmt.format(**fileParts)
-
-                for ch in BADCHAR:
-                    fileName = fileName.replace(ch, BADCHAR[ch])
-
-                count = 1
-                fullName = [fileName, '', fileExt]
-                while True:
-                    filePath = os.path.join(togo_path, ''.join(fullName))
-                    if not os.path.isfile(filePath):
-                        break
-                    count += 1
-                    fullName[1] = ' ({})'.format(count)
-
-                return filePath
-
-            # If we get here then use old style naming
-            parse_url = urlparse(url)
-
-            name = unquote(parse_url[2]).split('/')[-1].split('.')
-            try:
-                tivo_item_id = unquote(parse_url[4]).split('id=')[1]
-                name.insert(-1, ' - ' + tivo_item_id)
-            except:                             # pylint: disable=bare-except
-                pass
-            if decode:
-                if ts_format:
-                    name[-1] = 'ts'
-                else:
-                    name[-1] = 'mpg'
-            else:
-                if ts_format:
-                    name.insert(-1, ' (TS)')
-                else:
-                    name.insert(-1, ' (PS)')
-
-            nameHold = name
-            name.insert(-1, '.')
-
-            count = 2
-            newName = name
-            while os.path.isfile(os.path.join(togo_path, ''.join(newName))):
-                newName = nameHold
-                newName.insert(-1, ' (%d)' % count)
-                newName.insert(-1, '.')
-                count += 1
-
-            name = newName
-            name = ''.join(name)
-            for ch in BADCHAR:
-                name = name.replace(ch, BADCHAR[ch])
-
-            return os.path.join(togo_path, name)
-
-
-    @staticmethod
-    def get_1st_queued_file(tivo_tasks):
-        """
-        Download the first entry in the tivo tasks queue
-        """
-        tivo_name = tivo_tasks['tivo_name']
-        mak = tivo_tasks['mak']
-        togo_path = tivo_tasks['dest_path']
-        ts_error_mode = tivo_tasks['ts_error_mode']
-        ts_max_retries = tivo_tasks['ts_max_retries']
-
-        # TODO: These 2 variables shouldn't change, so we should get them earlier, possibly
-        # in the config module once so we can not log the warning when it doesn't exist
-        # so many times, and then add it to the tivo_tasks dict -mjl
-
-        # prefer tivolibre to tivodecode
-        decoder_path = config.get_bin('tivolibre')
-        decoder_is_tivolibre = True
-        if not decoder_path:
-            decoder_path = config.get_bin('tivodecode')
-            decoder_is_tivolibre = False
-        has_decoder = bool(decoder_path)
-
-        lock = tivo_tasks['lock']
-        with lock:
-            status = tivo_tasks['queue'][0]
-            ts_format = status['ts_format']
-            url = status['url']
-            dnld_url = url + ('&Format=video/x-tivo-mpeg-ts' if ts_format else '')
-            decode = status['decode'] and has_decoder
-            save_txt = status['save']
-            status.update({'running': True, 'queued': False})
-            outfile = ToGo.get_out_file(status, togo_path)
-            status['outfile'] = outfile
-
-        try:
-            handle = tivo_open(dnld_url)
-        except ConnectionResetError as e:
-            with lock:
-                status['running'] = False
-                status['error'] = str(e)
-            return
-        except Exception as e:                  # pylint: disable=broad-except
-            logger.error('get_1st_queued_file: tivo_open(%s) raised %s: %s', dnld_url, e.__class__.__name__, e)
-            with lock:
-                status['running'] = False
-                status['error'] = str(e)
-            return
-
-        if decode:
-            tcmd = [decoder_path, '-m', mak, '-o', outfile]
-            if not decoder_is_tivolibre:
-                tcmd += '-'
-
-            tivodecode = subprocess.Popen(tcmd, stdin=subprocess.PIPE,
-                                          bufsize=(512 * 1024))
-            f = tivodecode.stdin
-        else:
-            f = open(outfile, 'wb')
-
-
-
-        bytes_read = 0              # bytes read from download http connection
-        bytes_written = 0           # bytes written to file or tivo decoder
-        start_time = time.time()
-        retry_download = False
-        sync_loss = False
-
-        logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Start getting "{fname}" from {tivo_name}'
-                    .format(timestamp=datetime.fromtimestamp(start_time),
-                            fname=outfile, tivo_name=tivo_name))
-
-        with handle, f:
-            try:
-                # Download just the header first so remaining bytes are packet aligned for TS
-                tivo_header = handle.read(16)
-                bytes_read += len(tivo_header)
-                f.write(tivo_header)
-                bytes_written += len(tivo_header)
-
-                tivo_header_size = struct.unpack_from('>L', tivo_header, 10)[0]
-                output = handle.read(tivo_header_size - 16)
-                bytes_read += len(output)
-                f.write(output)
-                bytes_written += len(output)
-
-                last_interval_start = start_time
-                last_interval_read = bytes_read
-                while True:
-                    output = handle.read(524144) # Size needs to be divisible by 188
-                    bytes_read += len(output)
-                    last_interval_read += len(output)
-
-                    if not output:
-                        break
-
-                    if ts_format:
-                        cur_byte = 0
-                        sync_loss_start = -1
-                        while cur_byte < len(output):
-                            if output[cur_byte] != 0x47:
-                                sync_loss = True
-                                with lock:
-                                    status['ts_error_count'] += 1
-
-                                if sync_loss_start == -1:
-                                    sync_loss_start = cur_byte
-                            else:
-                                if sync_loss_start != -1:
-                                    logger.info('TS sync loss detected: %s bytes at offset %s - %s',
-                                                cur_byte - sync_loss_start,
-                                                bytes_written + sync_loss_start,
-                                                bytes_written + cur_byte)
-                                    sync_loss_start = -1
-
-                            cur_byte += 188
-
-                        if sync_loss and ts_error_mode != 'ignore':
-                            with lock:
-                                # we found errors and we don't want to ignore them so
-                                # if we have retries left schedule a retry
-                                if status['retry'] < ts_max_retries:
-                                    retry_download = True
-
-                                # if we are keeping the best download of all attempts
-                                # and we've already got more errors than a previous try
-                                # abort this download and move on to the next attempt
-                                if ts_error_mode == 'best':
-                                    if status['retry'] > 0:
-                                        if status['ts_error_count'] >= status['best_error_count']:
-                                            status['running'] = False
-                                            status['error'] = ('TS sync error. Best({}) < Current({})'
-                                                               .format(status['best_error_count'], status['ts_error_count']))
-                                            break
-
-                                # if we don't want to keep a download with any errors
-                                # abort now (we'll try again if there were tries left)
-                                elif ts_error_mode == 'reject':
-                                    status['running'] = False
-                                    status['error'] = 'TS sync error. Mode: reject'
-                                    break
-
-                    f.write(output)
-                    bytes_written += len(output)
-                    now = time.time()
-                    elapsed = now - last_interval_start
-                    if elapsed >= 1:
-                        with lock:
-                            status['rate'] = (last_interval_read * 8.0) / elapsed
-                            status['size'] += last_interval_read
-                        last_interval_read = 0
-                        last_interval_start = now
-
-                if status['running']:
-                    if not sync_loss:
-                        status['error'] = ''
-
-            except Exception as e:              # pylint: disable=broad-except
-                with lock:
-                    status['error'] = 'Error downloading file'
-                    status['running'] = False
-                    # If we've got retries left (even though this is aborting
-                    # due to an exception let's try again
-                    if status['retry'] < ts_max_retries:
-                        retry_download = True
-                logger.error('ToGo.get_1st_queued_file(%s) raised %s: %s\n\tr:%s; w:%s; retry: %s',
-                             dnld_url, e.__class__.__name__, e, format(bytes_read, ',d'),
-                             format(bytes_written, ',d'), 'yes' if retry_download else 'no')
-
-        end_time = time.time()
-        elapsed = (end_time - start_time) if end_time >= start_time + 1 else 1
-        rate = (bytes_read * 8.0) / elapsed
-        size = bytes_read
-
-        # if we were decoding wait for the decode subprocess to exit
-        if decode:
-            while tivodecode.poll() is None:
-                time.sleep(1)
-
-        # if we read and wrote the entire download file
-        if not output:
-            with lock:
-                status['running'] = False
-                status['rate'] = rate
-                status['size'] = size
-                best_file = status['best_file']
-
-            logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done getting "{fname}" from {tivo_name}, '
-                        '{mbps[0]:.2f} {mbps[1]}B/s ({num_bytes[0]:.3f} {num_bytes[1]}Bytes / {seconds:.0f} s)'
-                        .format(timestamp=datetime.fromtimestamp(end_time),
-                                fname=outfile, tivo_name=tivo_name,
-                                num_bytes=prefix_bin_qty(size),
-                                mbps=prefix_bin_qty(rate),
-                                seconds=elapsed))
-
-            if ts_error_mode == 'best' and os.path.isfile(best_file):
-                os.remove(best_file)
-                if os.path.isfile(best_file + '.txt'):
-                    os.remove(best_file + '.txt')
-
-            if sync_loss:
-                outfile_name = outfile.split('.')
-                # Add errors and attempt number to the output file name
-                outfile_name[-1:-1] = [' (^{}_{})'.format(status['ts_error_count'], status['retry']), '.']
-                new_outfile = ''.join(outfile_name)
-
-                # if the new filename exists, append a count until an unused name is found
-                if os.path.isfile(new_outfile):
-                    count = 2
-                    outfile_name[-2:-2] = [' ({})'.format(count)]
-
-                    while os.path.isfile(new_outfile):
-                        count += 1
-                        outfile_name[-2:-1] = [' ({})'.format(count)]
-                        new_outfile = ''.join(outfile_name)
-
-                os.rename(outfile, new_outfile)
-                outfile = new_outfile
-
-            if save_txt and os.path.isfile(outfile):
-                meta = basic_meta[url]
-                try:
-                    handle = tivo_open(details_urls[url])
-                    meta.update(metadata.from_details(handle.read()))
-                    handle.close()
-                except:                         # pylint: disable=bare-except
-                    pass
-                metafile = open(outfile + '.txt', 'w')
-                metadata.dump(metafile, meta)
-                metafile.close()
-
-            with lock:
-                status['best_file'] = outfile
-                status['best_error_count'] = status['ts_error_count']
-
-        else:
-            # aborted download
-            os.remove(outfile)
-            with lock:
-                logger.info('[%s] Aborted transfer (%s) of "%s" from %s',
-                            time.strftime('%d/%b/%Y %H:%M:%S'), status['error'], outfile, tivo_name)
-
-        if not retry_download:
-            with lock:
-                status['finished'] = True
-        else:
-            logger.debug('get_1st_queued_file: retrying download, adding back to the queue')
-            with lock:
-                retry_status = status.copy()
-            retry_status.update({'rate': 0,
-                                 'size': 0,
-                                 'queued': True,
-                                 'retry': retry_status['retry'] + 1,
-                                 'ts_error_count': 0})
-
-            logger.info('Transfer error detected, retrying download (%d/%d)',
-                        retry_status['retry'], ts_max_retries)
-            with lock:
-                tivo_tasks['queue'][1:1] = [retry_status]
-
-
-    @staticmethod
-    def process_queue(tivoIP):
-        PreventComputerFromSleeping(True)
-
-        logger.debug('process_queue(%s) entered.', tivoIP)
-
-        with active_tivos_lock:
-            tivo_tasks = active_tivos[tivoIP]
-
-        while True:
-            tivo_tasks['lock'].acquire()
-            if tivo_tasks['queue']:
-                tivo_tasks['lock'].release()
-            else:
-                logger.debug('process_queue: queue is empty for %s', tivoIP)
-                # Complicated but... before we delete the tivo from the
-                # list of active tivos we need to release the tasks lock
-                # in case someone else is waiting to add an entry and
-                # then we can acquire the active tivo lock and the tasks
-                # lock in the correct order (so we don't deadlock), double
-                # check than no tasks were added while we didn't have the
-                # lock, and only then delete the tivo from the active list.
-                tivo_tasks['lock'].release()
-                with active_tivos_lock:
-                    with tivo_tasks['lock']:
-                        if not tivo_tasks['queue']:
-                            del active_tivos[tivoIP]
-                    break
-
-            ToGo.get_1st_queued_file(tivo_tasks)
-            with tivo_tasks['lock']:
-                logger.debug('process_queue: %s removing 1st queue entry of %d', tivoIP, len(tivo_tasks['queue']))
-                tivo_tasks['queue'].pop(0)
-
-            with active_tivos_lock:
-                if not active_tivos:
-                    PreventComputerFromSleeping(False)
-
-    @staticmethod
     def ToGo(handler, query):
         """
         HTTP command handler to download a set of recordings from a Tivo.
@@ -1074,6 +639,7 @@ class ToGo(Plugin):
                           'running': False,
                           'queued': True,
                           'finished': False,
+                          'showinfo': showinfo[theurl], # metadata information about the show
                           'decode': decode,         # decode the downloaded tivo file
                           'save': save,             # save the tivo file's metadata to a .txt file
                           'ts_format': ts_format,   # download using transport stream otherwise program stream
@@ -1082,19 +648,15 @@ class ToGo(Plugin):
                           'rate': 0,
                           'size': 0,
                           'retry': 0,
-                          'ts_error_count': 0,
+                          'ts_error_packets': [],   # list of TS packets w/ sync lost as tuples (packet_no, count)
                           'best_file': '',
-                          'best_error_count': 0}
+                          'best_error_count': None} # count of TS packets lost (sync byte was wrong) in 'best_file'
 
                 with active_tivos_lock:
                     if tivoIP in active_tivos:
                         with active_tivos[tivoIP]['lock']:
                             active_tivos[tivoIP]['queue'].append(status)
                     else:
-                        # TODO: This might be better - mjl
-                        #active_tivos[tivoIP] = TivoDownload(tivoIP, status, tivo_mak, togo_path)
-                        #active_tivos[tivoIP].start()
-
                         # we have to add authentication info again because the
                         # download netloc may be different from that used to
                         # retrieve the list of recordings (and in fact the port
@@ -1104,8 +666,7 @@ class ToGo(Plugin):
 
                         active_tivos[tivoIP] = {'tivoIP': tivoIP,
                                                 'lock': RLock(),
-                                                'thread': Thread(target=ToGo.process_queue,
-                                                                 args=(tivoIP,)),
+                                                'thread': None,
                                                 'tivo_name': tivo_name,
                                                 'mak': tivo_mak,
                                                 'dest_path': togo_path,
@@ -1113,6 +674,7 @@ class ToGo(Plugin):
                                                 'ts_max_retries': int(config.get_togo('ts_max_retries', 0)),
                                                 'queue': [status]}
 
+                        active_tivos[tivoIP]['thread'] = TivoDownload(tivoIP, active_tivos, active_tivos_lock, tivo_open)
                         active_tivos[tivoIP]['thread'].start()
 
                 logger.info('[%s] Queued "%s" for transfer to %s',
