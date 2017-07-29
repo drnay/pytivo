@@ -232,7 +232,7 @@ class TivoDownload(Thread):
             if sync_loss:
                 outfile_name = outfile.split('.')
                 # Add errors(lost packet count) and attempt number to the output file name
-                outfile_name[-1:-1] = [' (^{}_{})'.format(ts_error_count, status['retry']), '.']
+                outfile_name[-1:-1] = [' (^{}_{})'.format(ts_error_count, status['retry']) + 1, '.']
                 new_outfile = ''.join(outfile_name)
 
                 # if the new filename exists, append a count until an unused name is found
