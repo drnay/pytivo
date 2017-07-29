@@ -1,10 +1,14 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import logging
 import os
 import platform
 import sys
 import time
+
+import beacon
+import config
+import httpserver
 
 if sys.version_info[0] < 3 or sys.version_info[1] < 4:
     print('ERROR: pyTivo requires Python >= 3.4.\n')
@@ -15,10 +19,6 @@ try:
     ssl._create_default_https_context = ssl._create_unverified_context
 except:
     pass
-
-import beacon
-import config
-import httpserver
 
 def exceptionLogger(*args):
     sys.excepthook = sys.__excepthook__

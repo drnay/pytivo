@@ -23,6 +23,7 @@ def bytes2str(data):
     """
     Convert bytes to str as utf-8. sequence values (and keys) will also be converted.
     """
+    # pylint: disable=bad-whitespace,multiple-statements
 
     if isinstance(data, bytes):  return data.decode('utf-8')
     if isinstance(data, dict):   return dict(map(bytes2str, data.items()))
@@ -42,9 +43,9 @@ def log_serviceinfo(logger, info):
         debugging = logger.isEnabledFor(logging.DEBUG)
         log_level = logging.INFO
 
-        log_info = { 'name': info.name,
-                     'address': socket.inet_ntoa(info.address),
-                     'port': info.port }
+        log_info = {'name': info.name,
+                    'address': socket.inet_ntoa(info.address),
+                    'port': info.port}
         log_hdr = "\n  {address}:{port} {name}\n"
         log_fmt = log_hdr
 
@@ -57,7 +58,7 @@ def log_serviceinfo(logger, info):
             for (k, v) in info.properties.items():
                 li_k = "prop_" + bytes2str(k)
                 log_info[li_k] = v
-                log_fmt += "    {k}: {{{li_k}}}\n".format(k = k, li_k = li_k)
+                log_fmt += "    {k}: {{{li_k}}}\n".format(k=k, li_k=li_k)
 
         logger.log(log_level, log_fmt.format(**log_info))
 
@@ -66,6 +67,8 @@ def log_serviceinfo(logger, info):
 
 
 class ZCListener:
+    # pylint: disable=redefined-builtin
+
     def __init__(self, names):
         self.names = names
 
@@ -89,8 +92,14 @@ class ZCBroadcast:
         logger.info('Announcing pytivo shares ({}:{})...'.format(config.get_ip(), port))
         for section, settings in config.getShares():
             try:
-                ct = GetPlugin(settings['type']).CONTENT_TYPE
-            except:
+                plugin = GetPlugin(settings['type'])
+                ct = plugin.CONTENT_TYPE
+                # if the plugin provides a test for validity use it otherwise assume valid
+                if hasattr(plugin, 'is_valid') and not plugin.is_valid(section, settings):
+                    logger.warning('share "%s" is invalid. It will be ignored (maybe check that path exists)', section)
+                    continue
+            except Exception as e:
+                logger.error('ZCBroadcast.__init__: raised %s: %s', e.__class__.__name__, e)
                 continue
 
             if ct.startswith('x-container/'):
@@ -102,10 +111,10 @@ class ZCBroadcast:
                 logger.info('Registering: %s' % section)
                 self.share_names.append(section)
 
-                desc = { b'path': bytes(SHARE_TEMPLATE % quote(section), 'utf-8'),
-                         b'platform': bytes(platform, 'utf-8'),
-                         b'protocol': b'http',
-                         b'tsn': bytes('{%s}' % uuid.uuid4(), 'utf-8') }
+                desc = {b'path': bytes(SHARE_TEMPLATE % quote(section), 'utf-8'),
+                        b'platform': bytes(platform, 'utf-8'),
+                        b'protocol': b'http',
+                        b'tsn': bytes('{%s}' % uuid.uuid4(), 'utf-8')}
                 tt = ct.split('/')[1]
                 title = section
                 count = 1
@@ -163,8 +172,8 @@ class ZCBroadcast:
                         tsn = tsn.decode('utf-8')
                     address = socket.inet_ntoa(info.address)
                     port = info.port
-                    config.tivos[tsn] = { 'name': name, 'address': address,
-                                          'port': port }
+                    config.tivos[tsn] = {'name': name, 'address': address,
+                                         'port': port}
                     # info.properties has bytes keys and values, but we'd rather
                     # deal with str keys and values, so convert them before adding
                     # them to our tivos dict.
@@ -193,6 +202,7 @@ class Beacon:
         self.UDPSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.UDPSock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
         self.services = []
+        self.timer = None
 
         self.platform = PLATFORM_VIDEO
         for section, settings in config.getShares():
@@ -208,7 +218,8 @@ class Beacon:
             logger = logging.getLogger('pyTivo.beacon')
             try:
                 self.bd = ZCBroadcast(logger)
-            except:
+            except Exception as e:
+                logger.debug('Beacon.__init__: raised %s: %s', e.__class__.__name__, e)
                 logger.error('Zeroconf failure')
                 self.bd = None
         else:
@@ -260,7 +271,8 @@ class Beacon:
         if self.bd:
             self.bd.shutdown()
 
-    def recv_bytes(self, sock, length):
+    @staticmethod
+    def recv_bytes(sock, length):
         block = ''
         while len(block) < length:
             add = sock.recv(length - len(block))
@@ -269,11 +281,13 @@ class Beacon:
             block += add
         return block
 
-    def recv_packet(self, sock):
-        length = struct.unpack('!I', self.recv_bytes(sock, 4))[0]
-        return self.recv_bytes(sock, length)
+    @staticmethod
+    def recv_packet(sock):
+        length = struct.unpack('!I', Beacon.recv_bytes(sock, 4))[0]
+        return Beacon.recv_bytes(sock, length)
 
-    def send_packet(self, sock, packet):
+    @staticmethod
+    def send_packet(sock, packet):
         sock.sendall(struct.pack('!I', len(packet)) + packet)
 
     def listen(self):

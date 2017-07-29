@@ -71,6 +71,17 @@ class Video(Plugin):
 
     tvbus_cache = LRUCache(1)
 
+    @staticmethod
+    def is_valid(share_name, settings):
+        """
+        Determine if the setting for the specified video share are valid.
+        Currently if the path for the share is valid we consider the share
+        valid.
+        """
+        path = settings['path']
+        return os.path.isdir(path)
+
+
     def video_file_filter(self, full_path, type=None):
         if os.path.isdir(full_path):
             return True
