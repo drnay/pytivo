@@ -151,10 +151,6 @@ class TivoDownload(Thread):
         else:
             f = open(outfile, 'wb')
 
-
-
-        bytes_read = 0              # bytes read from download http connection
-        bytes_written = 0           # bytes written to file or tivo decoder
         start_time = time.time()
         download_aborted = False
         retry_download = False
@@ -168,13 +164,12 @@ class TivoDownload(Thread):
             try:
                 # Download just the header first so remaining bytes are packet aligned for TS
                 output = self.get_tivo_header(tivo_f_in)
-                tivo_header_size = len(output)
-                bytes_read += tivo_header_size
                 f.write(output)
-                bytes_written += tivo_header_size
+                with lock:
+                    status['size'] = len(output)    # tivo_header_size
 
                 # Download the rest of the tivo file
-                download_aborted, retry_download = self.copy_tivo_body_to(tivo_f_in, f, tivo_header_size)
+                download_aborted, retry_download = self.copy_tivo_body_to(tivo_f_in, f)
 
                 with lock:
                     # temporarily put back variables removed by refactored loop
@@ -190,19 +185,22 @@ class TivoDownload(Thread):
                 with lock:
                     status['error'] = 'Error downloading file: {}'.format(e)
                     status['running'] = False
+                    bytes_read = status['size']
                     # If we've got retries left (even though this is aborting
                     # due to an exception) let's try again
                     if status['retry'] < ts_max_retries:
                         retry_download = True
 
-                logger.error('ToGo.get_1st_queued_file(%s, id=%s) raised %s: %s\n\tr:%s; w:%s; retry: %s',
+                logger.error('ToGo.get_1st_queued_file(%s, id=%s) raised %s: %s\n\tr:%s; retry: %s',
                              self.tivoIP, dnld_qs['id'], e.__class__.__name__, e, format(bytes_read, ',d'),
-                             format(bytes_written, ',d'), 'yes' if retry_download else 'no')
+                             'yes' if retry_download else 'no')
 
         end_time = time.time()
         elapsed = (end_time - start_time) if end_time >= start_time + 1 else 1
-        rate = (bytes_read * 8.0) / elapsed
-        size = bytes_read
+        with lock:
+            bytes_read = status['size']
+            rate = (bytes_read * 8.0) / elapsed
+            status['rate'] = rate
 
         # if we were decoding wait for the decode subprocess to exit
         if decode:
@@ -213,8 +211,6 @@ class TivoDownload(Thread):
         if not download_aborted:
             with lock:
                 status['running'] = False
-                status['rate'] = rate
-                status['size'] = size
                 best_file = status['best_file']
                 ts_error_count = reduce(lambda total, x: total + x[1], status['ts_error_packets'], 0)
 
@@ -222,7 +218,7 @@ class TivoDownload(Thread):
                         '{mbps[0]:.2f} {mbps[1]}B/s ({num_bytes[0]:.3f} {num_bytes[1]}Bytes / {seconds:.0f} s)'
                         .format(timestamp=datetime.fromtimestamp(end_time),
                                 fname=outfile, tivo_name=tivo_name,
-                                num_bytes=prefix_bin_qty(size),
+                                num_bytes=prefix_bin_qty(bytes_read),
                                 mbps=prefix_bin_qty(rate),
                                 seconds=elapsed))
 
@@ -232,7 +228,7 @@ class TivoDownload(Thread):
             if sync_loss:
                 outfile_name = outfile.split('.')
                 # Add errors(lost packet count) and attempt number to the output file name
-                outfile_name[-1:-1] = [' (^{}_{})'.format(ts_error_count, status['retry']) + 1, '.']
+                outfile_name[-1:-1] = [' (^{}_{})'.format(ts_error_count, status['retry'] + 1), '.']
                 new_outfile = ''.join(outfile_name)
 
                 # if the new filename exists, append a count until an unused name is found
@@ -250,6 +246,7 @@ class TivoDownload(Thread):
 
             with lock:
                 status['best_file'] = outfile
+                status['best_error_packets'] = status['ts_error_packets']
                 status['best_error_count'] = ts_error_count
 
         else:
@@ -262,6 +259,19 @@ class TivoDownload(Thread):
         if not retry_download:
             with lock:
                 status['finished'] = True
+                best_error_count = status['best_error_count']
+                best_error_packets = status['best_error_packets']
+
+            if best_error_count > 0:
+                logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done (with errors: '
+                            '{epackets} packets in {esections} pieces (largest: {elargest}); '
+                            '{ebytes[0]:.3f} {ebytes[1]}Bytes total)'
+                            .format(timestamp=datetime.fromtimestamp(end_time),
+                                    epackets=best_error_count,
+                                    esections=len(best_error_packets),
+                                    ebytes=prefix_bin_qty(best_error_count * TS_PACKET_SIZE),
+                                    elargest=reduce(lambda largest, x: largest if largest > x[1] else x[1],
+                                                    best_error_packets, 0)))
         else:
             logger.debug('get_1st_queued_file: retrying download, adding back to the queue')
             with lock:
@@ -289,16 +299,13 @@ class TivoDownload(Thread):
         return tivo_header
 
 
-    def copy_tivo_body_to(self, in_f, out_f, tivo_header_size):
+    def copy_tivo_body_to(self, in_f, out_f):
         """
         Copy the body of the tivo file from in_f to out_f.
 
         in_f must be positioned after the tivo header.
         tivo_header_size is used only for logging.
         """
-        #tivo_name = self.tivo_tasks['tivo_name']
-        #mak = self.tivo_tasks['mak']
-        #togo_path = self.tivo_tasks['dest_path']
         ts_error_mode = self.tivo_tasks['ts_error_mode']
         ts_max_retries = self.tivo_tasks['ts_max_retries']
 
@@ -306,10 +313,7 @@ class TivoDownload(Thread):
         with lock:
             status = self.tivo_tasks['queue'][0]
             ts_format = status['ts_format']
-            #url = status['url']
-            #dnld_url = url + ('&Format=video/x-tivo-mpeg-ts' if ts_format else '')
-            #decode = status['decode'] and self.has_decoder
-            #save_txt = status['save']
+            tivo_header_size = status['size']
 
         bytes_read = 0              # bytes read from download http connection
         bytes_written = 0           # bytes written to file or tivo decoder
