@@ -67,6 +67,28 @@ Kevin R. Keegan, William McBrine, and Terry Mound ("wgw").
 [pyTivo Forum]: <https://pytivo.sourceforge.io/forum/> "pyTivo Forum"
 [pyTiVo thread]: <http://www.tivocommunity.com/tivo-vb/showthread.php?t=328459> "pyTiVo thread on TiVo Community Forum"
 
+## Installing on Windows ##
+
+Install [Python 3][py3-download]
+* 3.6.2 is the latest version as of 9/13/2017
+* it may be installed alongside of Python 2 and the installed [Python Launcher][]
+  will help run the correct version.
+
+The netifaces dependency requires Microsoft Visual C++ 14.0. Get it with "Microsoft Visual C++ Build Tools": http://landinghub.visualstudio.com/visual-cpp-build-tools)
+
+Clone this [repository][py3Tivo-repo] (e.g. into c:\py3Tivo)
+Open an Administrator Command Prompt (if you installed Python 3 into Program Files) and install
+the required python 3 packages (this should work even with both Python 2.7 and Python 3.x installed).
+
+    c:
+    cd \py3Tivo
+    py -3 -m pip install -r requirements.txt
+
+[py3-download]: <https://www.python.org/downloads/> (Python 3 Downloads)
+[Python Launcher]: <https://docs.python.org/3/using/windows.html#python-launcher-for-windows>
+[py3Tivo-repo]: <>
+
+
 ## Setting up development on Ubuntu 16.04 linux
 
 ### python3
