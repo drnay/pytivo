@@ -45,6 +45,9 @@ wheels/
 pip-log.txt
 pip-delete-this-directory.txt
 
+# lint reports
+*.lint
+
 # Unit test / coverage reports
 htmlcov/
 .tox/
