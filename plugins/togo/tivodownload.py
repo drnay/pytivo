@@ -19,9 +19,25 @@ from showinfo import DataSources
 logger = logging.getLogger('pyTivo.TivoDownload')
 
 class TivoDownload(Thread):
-    """
+    """Download thread for a specific TiVo.
+
     TivoDownload is a Thread object which downloads all the recordings
     specified in a given tivo's queue.
+
+    Attributes:
+        tivoIP (str): The IPv4 address of the TiVo which this thread is downloading from.
+        active_tivos (dict<tivoIP>): Dictionary of all TiVos with active (or pending) downloads.
+        active_tivos_lock (RLock): Lock which must be acquired before accessing the
+            `active_tivos` dictionary.
+        tivo_tasks: The entry in `active_tivos` for this TiVo download thread (ie tivoIP)
+        tivo_open (Callable[[str], http.client.HTTPResponse]): function to use to "open"
+            a url to this TiVo, already initialized w/ authentication info
+        decoder_path (str): path to the decoder executable (may be either
+            tivodecode or tivolibre)
+        decoder_is_tivolibre (bool): determines if the decoder_path is to
+            tivolibre (true) or tivodecode (false)
+        has_decoder (bool): true if a decoder utility was found (and its path is in `decoder_path`)
+
     """
 
     def __init__(self, tivoIP, active_tivos, active_tivos_lock, tivo_open):
