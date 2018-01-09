@@ -171,6 +171,7 @@ class TivoDownload(Thread):
         download_aborted = False
         retry_download = False
         sync_loss = False
+        tivo_header_size = 0
 
         logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Start getting "{fname}" from {tivo_name}'
                     .format(timestamp=datetime.fromtimestamp(start_time),
@@ -181,8 +182,9 @@ class TivoDownload(Thread):
                 # Download just the header first so remaining bytes are packet aligned for TS
                 output = self.get_tivo_header(tivo_f_in)
                 f.write(output)
+                tivo_header_size = len(output)
                 with lock:
-                    status['size'] = len(output)    # tivo_header_size
+                    status['size'] = tivo_header_size
 
                 # Download the rest of the tivo file
                 download_aborted, retry_download = self.copy_tivo_body_to(tivo_f_in, f)
@@ -223,12 +225,28 @@ class TivoDownload(Thread):
             while tivodecode.poll() is None:
                 time.sleep(1)
 
+        # Fill in some of this attempt's information
+        # attempt_statuses = ('unknown', 'succeeded', 'aborted', 'sync_errors_saved', 'sync_errors_aborted')
+        with lock:
+            download_attempt = {'status': 'unknown',
+                                'start_time': start_time,
+                                'size': status['size'],
+                                'error_packet_count': reduce(lambda total, x: total + x[1], status['ts_error_packets'], 0)
+                               }
+            if sync_loss:
+                download_attempt['error_packets'] = [{'count': lost[1],
+                                                      'start': int(tivo_header_size + lost[0] * TS_PACKET_SIZE),
+                                                      'end':   int(tivo_header_size + (lost[0] + lost[1]) * TS_PACKET_SIZE)}
+                                                     for lost in status['ts_error_packets']]
+
         # if we read and wrote the entire download file
         if not download_aborted:
+            download_attempt['status'] = 'succeeded'
+            ts_error_count = download_attempt['error_packet_count']
+
             with lock:
                 status['running'] = False
                 best_file = status['best_file']
-                ts_error_count = reduce(lambda total, x: total + x[1], status['ts_error_packets'], 0)
 
             logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done getting "{fname}" from {tivo_name}, '
                         '{mbps[0]:.2f} {mbps[1]}B/s ({num_bytes[0]:.3f} {num_bytes[1]}Bytes / {seconds:.0f} s)'
@@ -238,10 +256,13 @@ class TivoDownload(Thread):
                                 mbps=prefix_bin_qty(rate),
                                 seconds=elapsed))
 
+            # We're only here if this attempt is better than the previous best
             if ts_error_mode == 'best' and os.path.isfile(best_file):
                 os.remove(best_file)
 
             if sync_loss:
+                download_attempt['status'] = 'sync_errors_saved'
+
                 outfile_name = outfile.split('.')
                 # Add errors(lost packet count) and attempt number to the output file name
                 outfile_name[-1:-1] = [' (^{}_{})'.format(ts_error_count, status['retry'] + 1), '.']
@@ -262,23 +283,30 @@ class TivoDownload(Thread):
 
             with lock:
                 status['best_file'] = outfile
-                status['best_error_packets'] = status['ts_error_packets']
                 status['best_error_count'] = ts_error_count
+                status['best_attempt_index'] = len(status['download_attempts'])
+                status['download_attempts'].append(download_attempt)
 
         else:
             # aborted download
+            download_attempt['status'] = 'sync_errors_aborted' if sync_loss else 'aborted'
+
             os.remove(outfile)
             with lock:
+                status['download_attempts'].append(download_attempt)
                 logger.info('[%s] Aborted transfer (%s) of "%s" from %s',
                             time.strftime('%d/%b/%Y %H:%M:%S'), status['error'], outfile, tivo_name)
 
         if not retry_download:
             with lock:
                 status['finished'] = True
-                best_error_count = status['best_error_count']
-                best_error_packets = status['best_error_packets']
+                best_attempt = status['download_attempts'][status['best_attempt_index']]
+                best_error_count = best_attempt['error_packet_count']
+
+            self.write_syncerr_log()
 
             if best_error_count > 0:
+                best_error_packets = best_attempt['error_packets']
                 logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done (with errors: '
                             '{epackets} packets in {esections} pieces (largest: {elargest}); '
                             '{ebytes[0]:.3f} {ebytes[1]}Bytes total)'
@@ -286,7 +314,7 @@ class TivoDownload(Thread):
                                     epackets=best_error_count,
                                     esections=len(best_error_packets),
                                     ebytes=prefix_bin_qty(best_error_count * TS_PACKET_SIZE),
-                                    elargest=reduce(lambda largest, x: largest if largest > x[1] else x[1],
+                                    elargest=reduce(lambda largest, x: largest if largest > x['count'] else x['count'],
                                                     best_error_packets, 0)))
         else:
             logger.debug('get_1st_queued_file: retrying download, adding back to the queue')
@@ -429,6 +457,59 @@ class TivoDownload(Thread):
         except Exception as e:                  # pylint: disable=broad-except
             logger.error('get_show_details: raised %s: %s', e.__class__.__name__, e)
             return
+
+    def write_syncerr_log(self):
+        """
+        Write out the sync error log of the current(complete) download in YAML
+        """
+        lock = self.tivo_tasks['lock']
+        with lock:
+            status = self.tivo_tasks['queue'][0]
+            outfile = status['outfile']
+            download_attempts = status['download_attempts']
+            best_ndx = status['best_attempt_index']
+            best_attempt = download_attempts[best_ndx]
+
+        best_size = best_attempt['size']
+        best_start_time = best_attempt['start_time']
+        best_error_packet_count = best_attempt['error_packet_count']
+
+        # replace the outfile extension w/ the syncerr log extension
+        outfile_parts = outfile.split('.')
+        outfile_parts[-1] = 'syncerr.yaml'
+        syncerr_fn = '.'.join(outfile_parts)
+
+        # Save the syncerr log file overwriting any existing file
+        with open(syncerr_fn, 'w') as txt_f:
+            # In order to control the exact yaml layout for maximum readability
+            # just write the lines as desired instead of using a yaml processor
+
+            # Preamble
+            txt_f.write('%YAML 1.2\n---\n')
+
+            # General Info
+            txt_f.write('{:<20}: "{}"\n'.format('fileName', os.path.split(outfile)[1]))
+            txt_f.write('{:<20}: {}\n'.format('fileSize', best_size))
+            txt_f.write('{:<20}: {:%Y-%m-%dT%H:%M:%SZ}\n'.format('downloadStarted', datetime.utcfromtimestamp(best_start_time)))
+            txt_f.write('{:<20}: {}\n'.format('attemptSaved', best_ndx + 1))
+            txt_f.write('{:<20}: {}\n'.format('totalErrorPackets', best_error_packet_count))
+
+            # download attempts
+            txt_f.write('downloadAttempts:\n')
+            for attempt_number, attempt in enumerate(download_attempts, start=1):
+                txt_f.write('    - {:<14}: {}\n'.format('attemptNumber', attempt_number))
+                txt_f.write('      {:<14}: {}\n'.format('status', attempt['status']))
+                error_packets = attempt.get('error_packets', [])
+                if error_packets:
+                    txt_f.write('      errorPackets:\n')
+                    for pkt_grp in error_packets:
+                        txt_f.write('          - {{ count: {count:>6}, start: {start:>11}, end: {end:>11} }}\n'
+                                    .format(**pkt_grp))
+
+            # yaml document end marker
+            txt_f.write('...\n')
+
+        logger.debug('Sync error log yaml file saved: %s', syncerr_fn)
 
 
     @staticmethod

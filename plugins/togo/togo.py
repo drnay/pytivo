@@ -648,7 +648,9 @@ class ToGo(Plugin):
                           'rate': 0,
                           'size': 0,
                           'retry': 0,
+                          'download_attempts': [],  # information about each download attempt (used for sync error log)
                           'ts_error_packets': [],   # list of TS packets w/ sync lost as tuples (packet_no, count)
+                          'best_attempt_index': None, # index into download_attempts of the attempt w/ fewest errors
                           'best_file': '',
                           'best_error_count': None} # count of TS packets lost (sync byte was wrong) in 'best_file'
 
