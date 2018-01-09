@@ -20,9 +20,9 @@ SCRIPTDIR = os.path.dirname(__file__)
 
 SERVER_INFO = """<?xml version="1.0" encoding="utf-8"?>
 <TiVoServer>
-<Version>2.2.1</Version>
+<Version>2.3.0</Version>
 <InternalName>py3Tivo</InternalName>
-<InternalVersion>2.2.1</InternalVersion>
+<InternalVersion>2.3.0</InternalVersion>
 <Organization>pyTivo Developers</Organization>
 <Comment>http://pytivo.sf.net/</Comment>
 </TiVoServer>"""
