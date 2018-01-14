@@ -109,7 +109,6 @@ class TivoDownload(Thread):
         """
         tivo_name = self.tivo_tasks['tivo_name']
         mak = self.tivo_tasks['mak']
-        togo_path = self.tivo_tasks['dest_path']
         ts_error_mode = self.tivo_tasks['ts_error_mode']
         ts_max_retries = self.tivo_tasks['ts_max_retries']
 
@@ -124,7 +123,7 @@ class TivoDownload(Thread):
             status.update({'running': True, 'queued': False})
             showinfo = status['showinfo']
             self.get_show_details(showinfo)
-            outfile = self.get_out_file(status, togo_path)
+            outfile = self.get_out_file(status)
             status['outfile'] = outfile
 
         split_dnld_url = urlsplit(dnld_url)
@@ -512,11 +511,79 @@ class TivoDownload(Thread):
         logger.debug('Sync error log yaml file saved: %s', syncerr_fn)
 
 
-    @staticmethod
-    def get_out_file(status, togo_path):
+    def get_out_file(self, status):
         """
         Get the full file path for the tivo recording to be downloaded (status['url'].
         The returned path will be to a non existent file.
+        """
+
+        fn_fmt_info = self.tivo_tasks['fn_format_info']
+        togo_path = self.tivo_tasks['dest_path']
+        showinfo = status['showinfo']
+        decode = status['decode']
+        ts_format = status['ts_format']
+
+        fn_fmt = fn_fmt_info['movie'] if showinfo.is_movie() else fn_fmt_info['episode']
+
+        # if the showinfo doesn't have a title, there's probably more info missing
+        # so use the old style naming, or if there was no format specified in the
+        # config by the user for this download type also fall back to old style naming.
+        if not showinfo['title'] or not fn_fmt:
+            return self.get_out_file_old(status, togo_path)
+
+        file_ext = '.tivo'
+        if decode:
+            file_ext = '.ts' if ts_format else '.mpg'
+
+        file_parts = {'title':             showinfo['title'],
+                      'season':            showinfo['season_number'],
+                      'episode':           showinfo['episode_number'],
+                      'episode_title':     showinfo['episode_title'],
+                      'movie_year':        showinfo['movie_year'],
+                      'date_recorded':     showinfo['capture_date'],
+                      'original_air_date': showinfo['original_air_date'],
+                      'callsign':          showinfo['station_callsign'],
+                      'channel':           showinfo['station_channel'],
+                      'tivo_stream_type':  'TS' if ts_format else 'PS',
+                     }
+
+        # Convert the recorded datetime from UTC to local time. (default to the current date/time)
+        if file_parts['date_recorded']:
+            file_parts['date_recorded'] = file_parts['date_recorded'].astimezone(get_localzone())
+        else:
+            file_parts['date_recorded'] = datetime.now()
+
+        # If the original air date is unknown, default it to Jan 1 1900
+        if not file_parts['original_air_date']:
+            file_parts['original_air_date'] = datetime(1900, 1, 1)
+
+        filename = fn_fmt.format(**file_parts)
+
+        # replace characters we don't want to allow in filenames
+        for ch in BADCHAR:
+            filename = filename.replace(ch, BADCHAR[ch])
+
+        # make sure that the filepath we return is to a non-existent file
+        count = 1
+        full_name = [filename, '', file_ext]
+        while True:
+            filepath = os.path.join(togo_path, ''.join(full_name))
+            if not os.path.isfile(filepath):
+                break
+            count += 1
+            full_name[1] = ' ({})'.format(count)
+
+        return filepath
+
+
+    @staticmethod
+    def get_out_file_old(status, togo_path):
+        """
+        Get the full file path for the tivo recording to be downloaded (status['url'].
+        The returned path will be to a non existent file.
+
+        This function provides TivoDesktop filenaming and the previous pyTivo file
+        naming.
         """
 
         url = status['url']

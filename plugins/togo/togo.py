@@ -672,6 +672,9 @@ class ToGo(Plugin):
                                                 'tivo_name': tivo_name,
                                                 'mak': tivo_mak,
                                                 'dest_path': togo_path,
+                                                'fn_format_info': {'episode': config.get_togo('episode_fn'),
+                                                                   'movie': config.get_togo('movie_fn')
+                                                                  },
                                                 'ts_error_mode': config.get_togo('ts_error_mode', 'ignore'),
                                                 'ts_max_retries': int(config.get_togo('ts_max_retries', 0)),
                                                 'queue': [status]}

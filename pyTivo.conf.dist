@@ -70,6 +70,22 @@ ffmpeg=/usr/bin/ffmpeg
 [togo]
 #path=<path where movies will go or a section name>
 
+# Naming of the saved togo downloaded files. The field names are defined ?where? -mjl 6/17/2017
+
+# These formats work well for Plex (although NOTE: season and episode are NOT correctly
+# populated because the metadata isn't available from the TiVo, and will always be 0)
+episode_fn = {title} - s{season:d}e{episode:02d} - {episode_title} ({date_recorded:%b_%d_%Y}, {callsign})
+movie_fn = {title} ({movie_year}) ({date_recorded:%b_%d_%Y}, {callsign})
+
+# These formats are close to the naming used for Tivo Desktop
+# (you can also leave episode_fn and movie_fn undefined to use the original naming)
+#episode_fn = {title} - ''{episode_title}'' (Recorded {date_recorded:%b %d, %Y}, {callsign}) ({tivo_stream_type})
+#movie_fn = {title} (Recorded {date_recorded:%b %d, %Y}, {callsign}) ({tivo_stream_type})
+
+# This is similar to the Tivo Desktop sortable naming
+#episode_fn = {title} - {date_recorded:%Y-%m-%d} - ''{episode_title}'' {callsign} ({tivo_stream_type})
+#movie_fn = {title} - {date_recorded:%Y-%m-%d} {callsign} ({tivo_stream_type})
+
 # Current TiVos (as of June 2017 at least) have a bug where the Transport stream (TS)
 # data being sent is corrupted (losing sync), pytivo can attempt to recognize the
 # corruption and try again.
