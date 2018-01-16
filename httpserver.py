@@ -317,8 +317,8 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
         if isinstance(args[0], socket.timeout):
             return
 
-        self.server.logger.info("[%s] %s %s", self.log_date_time_string(),
-                                self.address_string(), format%args)
+        self.server.logger.debug("[%s] %s %s", self.log_date_time_string(),
+                                 self.address_string(), format%args)
 
     def send_fixed(self, page, mime, code=200, refresh=''):
         squeeze = (len(page) > 256 and mime.startswith('text') and
