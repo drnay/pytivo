@@ -11,7 +11,8 @@ Whether a file should be named as an episode or a movie is currently determined
 by the existence of a value for the *movie_year* field, if it exists the
 *movie_fn* key is used, otherwise the *episode_fn* key is used.
 
-The syntax for the *episode_fn* and *movie_fn* keys is the Python [format string][pythonFormatStr].
+The *episode_fn* and *movie_fn* key values use the Python [format string][pythonFormatStr]
+syntax with the field names defined below.
 
 Example settings:
 
@@ -35,6 +36,7 @@ movie_year         | If the recording is a movie the year it was released. (inte
 original_air_date  | The date/time the recording was originally aired. Default to Jan 1 1900 (datetime)
 tivo_stream_type   | The method used to download the recording. (a string either "TS" or "PS")
 
-Datetime fields have their own formatting specification.
+Datetime fields have their own [formatting specification][pythonDateTimeFormatCodes].
 
-[pythonFormatStr]: <>
+[pythonFormatStr]: <https://docs.python.org/3/library/string.html#formatspec>
+[pythonDateTimeFormatCodes]: <https://docs.python.org/3/library/datetime.html?highlight=datetime#strftime-strptime-behavior>

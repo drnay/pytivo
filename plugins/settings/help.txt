@@ -419,6 +419,35 @@ to use the ToGo feature, you need not set this.
 Example Settings: My Videos, /home/user/Videos
 Available In: togo
 
+episode_fn
+
+Default Setting: None
+Valid Entries: A python format string using the supplied field names
+Required: No
+Description: This format will be used to determine the filename of
+downloaded recordings which are not movies (it is assumed it is an
+epsiode of a show).
+See the plugins/togo/fn_fields.md file for a description of the
+metadata fields which may be used in the format string.
+If unset, the current naming syntax used for "Tivo Desktop" will
+be used.
+Example Settings: {title} - s{season:d}e{episode:02d} - {episode_title} ({date_recorded:%b_%d_%Y}, {callsign})
+Available In: togo
+
+movie_fn
+
+Default Setting: None
+Valid Entries: A python format string using the supplied field names
+Required: No
+Description: This format will be used to determine the filename of
+downloaded recordings which are considered movies.
+See the plugins/togo/fn_fields.md file for a description of the
+metadata fields which may be used in the format string.
+If unset, the current naming syntax used for "Tivo Desktop" will
+be used.
+Example Settings: {title} ({movie_year}) ({date_recorded:%b_%d_%Y}, {callsign})
+Available In: togo
+
 ts_error_mode
 
 Mode: select
