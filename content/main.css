@@ -49,6 +49,14 @@ tr.row1 {
     border-collapse: collapse
 }
 
+#footer {
+    font-size: 80%
+}
+
+#footer .version {
+    text-align: right;
+}
+
 td {
     padding: 4px
 }

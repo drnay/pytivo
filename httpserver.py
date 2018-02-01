@@ -18,11 +18,12 @@ from plugin import GetPlugin
 
 SCRIPTDIR = os.path.dirname(__file__)
 
+PYTIVO_VERSION = '2.4.0'
 SERVER_INFO = """<?xml version="1.0" encoding="utf-8"?>
 <TiVoServer>
-<Version>2.4.0</Version>
+<Version>""" + PYTIVO_VERSION + """</Version>
 <InternalName>py3Tivo</InternalName>
-<InternalVersion>2.4.0</InternalVersion>
+<InternalVersion>""" + PYTIVO_VERSION + """</InternalVersion>
 <Organization>pyTivo Developers</Organization>
 <Comment>http://pytivo.sf.net/</Comment>
 </TiVoServer>"""
@@ -386,6 +387,7 @@ class TivoHTTPHandler(http.server.BaseHTTPRequestHandler):
 
     def infopage(self):
         t = Template(file=os.path.join(SCRIPTDIR, 'templates', 'info_page.tmpl'))
+        t.version = PYTIVO_VERSION
         t.admin = ''
 
         if config.get_server('tivo_mak') and config.get_togo('path'):
