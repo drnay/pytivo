@@ -255,7 +255,8 @@ class TivoDownload(Thread):
                                 mbps=prefix_bin_qty(rate),
                                 seconds=elapsed))
 
-            # We're only here if this attempt is better than the previous best
+            # We're here if there were no sync errors, or we're saving all attempts or
+            # this last attempt has fewer sync errors than the previous best attempt
             if ts_error_mode == 'best' and os.path.isfile(best_file):
                 os.remove(best_file)
 
@@ -281,9 +282,10 @@ class TivoDownload(Thread):
                 outfile = new_outfile
 
             with lock:
-                status['best_file'] = outfile
-                status['best_error_count'] = ts_error_count
-                status['best_attempt_index'] = len(status['download_attempts'])
+                if not status['best_file'] or ts_error_count < status['best_error_count']:
+                    status['best_file'] = outfile
+                    status['best_error_count'] = ts_error_count
+                    status['best_attempt_index'] = len(status['download_attempts'])
                 status['download_attempts'].append(download_attempt)
 
         else:

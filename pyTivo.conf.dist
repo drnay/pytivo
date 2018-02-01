@@ -93,7 +93,8 @@ movie_fn = {title} ({movie_year}) ({date_recorded:%b_%d_%Y}, {callsign})
 #   ignore : Ignore any errors encountered and just save what is sent
 #   reject : abort the download as soon as an error is detected
 #   best   : keep the file with the least number of errors detected
-#ts_error_mode = [ignore | best | reject]
+#   all    : keep all attempts w/ attempt #, error packets encoded in the name
+#ts_error_mode = [ignore | best | reject | all]
 ts_error_mode = ignore
 
 # ts_max_retries only applies when ts_error_mode is best or reject

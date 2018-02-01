@@ -451,9 +451,9 @@ Available In: togo
 ts_error_mode
 
 Mode: select
-Options: ignore/best/reject
+Options: ignore/best/reject/all
 Default Setting: ignore
-Valid Entries: ignore/best/reject
+Valid Entries: ignore/best/reject/all
 Required: No
 Description: Current TiVos (as of June 2017 at least) have a bug where
 the Transport stream (TS) data being sent is corrupted (losing sync),
@@ -461,8 +461,10 @@ pytivo can attempt to recognize the corruption and try again.
 The togo_ts_error_mode may be set one of the following:
   ignore : Ignore any errors encountered and just save what is sent
   reject : abort the download as soon as an error is detected
-  best   : keep the file with the least number of errors detected
-Example Settings: ignore/best/reject
+  best   : keep the file with the least number of errors detected. abort any attempt
+           with more errors than previous best
+  all    : keep all download attempts until no sync errors or no more attempts
+Example Settings: ignore/best/reject/all
 Available In: togo
 
 ts_max_retries
