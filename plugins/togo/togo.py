@@ -427,11 +427,12 @@ class ToGo(Plugin):
                     q_pos += 1
 
         with active_tivos_lock:
-            if tivoIP and tivoIP in active_tivos:
-                copy_queue(active_tivos[tivoIP])
+            if tivoIP:
+                if tivoIP in active_tivos:
+                    copy_queue(active_tivos[tivoIP])
             else:
-                for tivo_tasks in active_tivos:
-                    copy_queue(tivo_tasks)
+                for activeTivoIP in active_tivos:
+                    copy_queue(active_tivos[activeTivoIP])
 
         return urlstatus
 
