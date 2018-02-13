@@ -97,7 +97,7 @@ movie_fn = {title} ({movie_year}) ({date_recorded:%b_%d_%Y}, {callsign})
 #ts_error_mode = [ignore | best | reject | all]
 ts_error_mode = ignore
 
-# ts_max_retries only applies when ts_error_mode is best or reject
+# ts_max_retries only applies when ts_error_mode is best, reject or all
 ts_max_retries = 3
 
 # Per tivo options
