@@ -1,5 +1,11 @@
 # Change Log
 
+## [2.5.1] - 2018-02-13
+
+### Fixed
+
+- fix crash getting NPL of a different TiVo than the one with active downloads.
+
 ## [2.5.0] - 2018-02-01
 
 ### Changed
@@ -8,15 +14,15 @@
 - refactor the pyTivo version references in the code and add the version to
   the info page
 - Update dependecies
-	- mutagen (1.40)
+    - mutagen (1.40)
 
 
 ## [2.4.0] - 2018-01-26
 
 ### Changed
 
-- config fields for customized togo file naming; episode_fn & movie_fn,
-  see plugin/togo/fn_fields.md for more info
+- config fields for customized togo file naming; _episode_fn_ &  _movie_fn_,
+  see [togo/fn_fields.md](./plugins/togo/fn_fields.md) for more info
 - change logging priority of httpserver requests from info to debug to reduce
   noise when sending info priority messages to the console
 
@@ -29,9 +35,9 @@ Some testing on Windows 7 in addition to Linux
 - Write a yaml sync error log file for every togo download
 - Default to using transport stream downloads
 - Update dependecies
-	- mutagen (1.39)
-	- pytz (2017.3)
-	- tzlocal (1.5.1)
+    - mutagen (1.39)
+    - pytz (2017.3)
+    - tzlocal (1.5.1)
 - Add a section to the Readme about installing on MS Windows
 
 ### Added
@@ -55,9 +61,9 @@ Some testing on Windows 7 in addition to Linux
 - Implement new ShowInfo class to encapsulate most of the show metadata
 - Refactor download thread functionality
 - Update dependecies, add tzlocal
-	- mutagen (1.38)
-	- zeroconf (0.19.1)
-	- tzlocal (1.4)
+    - mutagen (1.38)
+    - zeroconf (0.19.1)
+    - tzlocal (1.4)
 
 ## [2.1.0] - 2017-07-18
 
@@ -67,8 +73,8 @@ Some testing on Windows 7 in addition to Linux
   pyInstaller and pyTivoTray which were more specifically for PyTivoDesktop and
   Windows & Mac not Linux.
     - Check transport stream (ts) downloads for sync errors
-	- TivoDesktop togo file naming
-	- support using tivolibre to decode the downloaded .tivo file
+    - TivoDesktop togo file naming
+    - support using tivolibre to decode the downloaded .tivo file
 - moved togo settings to their own section in pytivo.conf ([togo])
 
 ### Fixed
@@ -90,9 +96,9 @@ Tested only on Linux
 
 - Converted from Python 2 to **Python 3**
 - Remove local copies of packages, use latest versions from pip
-	- zeroconf (0.19.0)
-	- mutagen (1.37)
-	- cheetah3 (3.0.0)
+    - zeroconf (0.19.0)
+    - mutagen (1.37)
+    - cheetah3 (3.0.0)
 - Format README with markdown
 - Various info added to the README
 - Prefix the episode title w/ the episode number when shown in a folder on the TiVo

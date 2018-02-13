@@ -18,7 +18,7 @@ from plugin import GetPlugin
 
 SCRIPTDIR = os.path.dirname(__file__)
 
-PYTIVO_VERSION = '2.5.0'
+PYTIVO_VERSION = '2.5.1'
 SERVER_INFO = """<?xml version="1.0" encoding="utf-8"?>
 <TiVoServer>
 <Version>""" + PYTIVO_VERSION + """</Version>
