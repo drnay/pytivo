@@ -74,7 +74,7 @@ Install [Python 3][py3-download]
 * it may be installed alongside of Python 2 and the installed [Python Launcher][]
   will help run the correct version.
 
-The netifaces dependency requires Microsoft Visual C++ 14.0. Get it with "Microsoft Visual C++ Build Tools": http://landinghub.visualstudio.com/visual-cpp-build-tools)
+The netifaces dependency requires Microsoft Visual C++ 14.0. Get it with "Microsoft Visual C++ Build Tools": http://landinghub.visualstudio.com/visual-cpp-build-tools
 
 Clone this [repository][py3Tivo-repo] (e.g. into c:\py3Tivo)
 Open an Administrator Command Prompt (if you installed Python 3 into Program Files) and install
@@ -86,7 +86,7 @@ the required python 3 packages (this should work even with both Python 2.7 and P
 
 [py3-download]: <https://www.python.org/downloads/> (Python 3 Downloads)
 [Python Launcher]: <https://docs.python.org/3/using/windows.html#python-launcher-for-windows>
-[py3Tivo-repo]: <>
+[py3Tivo-repo]: <https://github.com/mlippert/pytivo> "py3Tivo git repository"
 
 
 ## Setting up development on Ubuntu 16.04 linux
@@ -96,17 +96,28 @@ the required python 3 packages (this should work even with both Python 2.7 and P
 From DigitalOcean's [page on setting up Python 3](https://www.digitalocean.com/community/tutorials/how-to-install-python-3-and-set-up-a-programming-environment-on-an-ubuntu-16-04-server):
 
 Install these apt packages:
-- python3-pip
+
 - python3-dev
 - python3-venv
-- pylint3
 - build-essential
 - libssl-dev
 - libffi-dev
 
+I had listed these, but I don't think they're needed (at least on Linux Mint 18.3)
+
+- python3-pip (already installed?)
+- pylint3 (install via pip instead)
+
 Create a Python 3 virtual environment for py3tivo (see DigitalOcean's page)
 
+    cd <pytivo repository root> and create the virtual env directory in there
+    python3 -m venv venv
+    pip install --upgrade pip
+    pip install pylint
+
+
 Install these python packages (with pip):
+
 - zeroconf
 - mutagen
 - cheetah3
