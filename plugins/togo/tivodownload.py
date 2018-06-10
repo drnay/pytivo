@@ -230,6 +230,7 @@ class TivoDownload(Thread):
             download_attempt = {'status': 'unknown',
                                 'start_time': start_time,
                                 'size': status['size'],
+                                'download_time': elapsed,
                                 'error_packet_count': reduce(lambda total, x: total + x[1], status['ts_error_packets'], 0)
                                }
             if sync_loss:
@@ -248,7 +249,7 @@ class TivoDownload(Thread):
                 best_file = status['best_file']
 
             logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done getting "{fname}" from {tivo_name}, '
-                        '{mbps[0]:.2f} {mbps[1]}B/s ({num_bytes[0]:.3f} {num_bytes[1]}Bytes / {seconds:.0f} s)'
+                        '{mbps[0]:.2f} {mbps[1]}b/s ({num_bytes[0]:.3f} {num_bytes[1]}Bytes / {seconds:.0f} s)'
                         .format(timestamp=datetime.fromtimestamp(end_time),
                                 fname=outfile, tivo_name=tivo_name,
                                 num_bytes=prefix_bin_qty(bytes_read),
@@ -466,6 +467,7 @@ class TivoDownload(Thread):
         lock = self.tivo_tasks['lock']
         with lock:
             status = self.tivo_tasks['queue'][0]
+            tivo_name = self.tivo_tasks['tivo_name']
             outfile = status['outfile']
             download_attempts = status['download_attempts']
             best_ndx = status['best_attempt_index']
@@ -491,6 +493,7 @@ class TivoDownload(Thread):
             # General Info
             txt_f.write('{:<20}: "{}"\n'.format('fileName', os.path.split(outfile)[1]))
             txt_f.write('{:<20}: {}\n'.format('fileSize', best_size))
+            txt_f.write('{:<20}: {} ({})\n'.format('tivoName', tivo_name, self.tivoIP))
             txt_f.write('{:<20}: {:%Y-%m-%dT%H:%M:%SZ}\n'.format('downloadStarted', datetime.utcfromtimestamp(best_start_time)))
             txt_f.write('{:<20}: {}\n'.format('attemptSaved', best_ndx + 1))
             txt_f.write('{:<20}: {}\n'.format('totalErrorPackets', best_error_packet_count))
@@ -498,14 +501,21 @@ class TivoDownload(Thread):
             # download attempts
             txt_f.write('downloadAttempts:\n')
             for attempt_number, attempt in enumerate(download_attempts, start=1):
+                transfer = {'size': attempt['size'],
+                            'time': attempt['download_time'],
+                           }
+                transfer['mbps'] = prefix_bin_qty(transfer['size'] * 8.0 / transfer['time']);
+
                 txt_f.write('    - {:<14}: {}\n'.format('attemptNumber', attempt_number))
                 txt_f.write('      {:<14}: {}\n'.format('status', attempt['status']))
+                txt_f.write('      {:<14}: {{ bytes: {size:>11}, seconds: {time:>6.1f}, rate: "{mbps[0]:6.2f} {mbps[1]}b/s" }}\n'
+                            .format('transfer', **transfer))
                 error_packets = attempt.get('error_packets', [])
                 if error_packets:
                     txt_f.write('      errorPackets:\n')
                     for pkt_grp in error_packets:
-                        txt_f.write('          - {{ count: {count:>6}, start: {start:>11}, end: {end:>11} }}\n'
-                                    .format(**pkt_grp))
+                        txt_f.write('          - {{ count: {count:>6}, start: {start:>11}, end: {end:>11}, startMB: {startMB:>8.2f} }}\n'
+                                    .format(**pkt_grp, startMB=pkt_grp['start'] / (1024 * 1024)))
 
             # yaml document end marker
             txt_f.write('...\n')
