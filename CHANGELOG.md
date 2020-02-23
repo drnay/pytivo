@@ -1,5 +1,12 @@
 # Change Log
 
+## [2.6.1] - 2020-02-23
+
+### Fixed
+
+- Fix lrucache for PEP 479 implemented in python 3.6+. pyTivo now works with python 3.8
+
+
 ## [2.6.0] - 2018-06-10
 
 ### Changed
@@ -7,11 +14,13 @@
 - Enhanced syncerr yaml report file by adding tivoName, attempt transfer info
   and error startMB.
 
+
 ## [2.5.1] - 2018-02-13
 
 ### Fixed
 
 - fix crash getting NPL of a different TiVo than the one with active downloads.
+
 
 ## [2.5.0] - 2018-02-01
 
@@ -33,6 +42,7 @@
 - change logging priority of httpserver requests from info to debug to reduce
   noise when sending info priority messages to the console
 
+
 ## [2.3.0] - 2018-01-09
 
 Some testing on Windows 7 in addition to Linux
@@ -53,12 +63,14 @@ Some testing on Windows 7 in addition to Linux
 - Add some development features like a Makefile to help running pylint and
   other development tasks
 
+
 ## [2.2.1] - 2017-07-30
 
 ### Fixed
 
 - fix exception putting attempt number in filename
 - improve logging
+
 
 ## [2.2.0] - 2017-07-29
 
@@ -71,6 +83,7 @@ Some testing on Windows 7 in addition to Linux
     - mutagen (1.38)
     - zeroconf (0.19.1)
     - tzlocal (1.4)
+
 
 ## [2.1.0] - 2017-07-18
 
@@ -113,6 +126,7 @@ Tested only on Linux
 ### Added
 
 - requirements.txt file for use w/ pip to install dependencies
+
 
 ## [1.6.0] - prior to 2017-01-01 (from https://github.com/wmcbrine/pytivo)
 
