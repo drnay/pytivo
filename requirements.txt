@@ -1,5 +1,5 @@
 Cheetah3>=3.0.0
-mutagen>=1.40
-zeroconf>=0.19.1
-pytz>=2017.3
-tzlocal>=1.5.1
+mutagen>=1.44.0
+zeroconf>=0.24.4
+pytz>=2019.3
+tzlocal>=2.0.0
