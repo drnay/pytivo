@@ -10,6 +10,7 @@ from enum import Enum
 from datetime import datetime
 from xml.dom import minidom
 from xml.parsers import expat
+
 try:
     import plistlib
 except:
@@ -265,7 +266,9 @@ def from_moov(full_path):
                 # I don't know if the returned data is still in the same format
                 # AND readPlistFromBytes is deprecated, should use loads, so work
                 # to do when what this does is better understood and can be tested. -mjl 2017-07-14
-                data = plistlib.readPlistFromBytes(value)
+                # 3.9 removed the old api, so w/o any testing, I'm changing this to loads -mjl 2021-02-21
+                #data = plistlib.readPlistFromBytes(value)
+                data = plistlib.loads(value)
             except:
                 pass
             else:
@@ -275,7 +278,9 @@ def from_moov(full_path):
         elif (key == '----:com.pyTivo.pyTivo:tiVoINFO' and
               'plistlib' in sys.modules):
             try:
-                data = plistlib.readPlistFromBytes(value)
+                # 3.9 removed the old api, so w/o any testing, I'm changing this to loads -mjl 2021-02-21
+                #data = plistlib.readPlistFromBytes(value)
+                data = plistlib.loads(value)
             except:
                 pass
             else:
@@ -354,7 +359,10 @@ def from_eyetv(full_path):
     eyetvp = [x for x in os.listdir(path) if x.endswith('.eyetvp')][0]
     eyetvp = os.path.join(path, eyetvp)
     try:
-        eyetv = plistlib.readPlist(eyetvp)
+        # 3.9 removed the old api, so w/o any testing, I'm changing this to load -mjl 2021-02-21
+        #eyetv = plistlib.readPlist(eyetvp)
+        with open(eyetvp, 'rb') as eyetvfp:
+            eyetv = plistlib.load(eyetvfp)
     except:
         return metadata
     if 'epg info' in eyetv:
@@ -597,7 +605,7 @@ def _parse_nfo(nfo_path, nfo_data=None):
     try:
         xmldoc = minidom.parseString(os.linesep.join(nfo_data))
     except expat.ExpatError as err:
-        if expat.ErrorString(err.code) == expat.errors.XML_ERROR_INVALID_TOKEN:
+        if err.code == expat.errors.codes[expat.errors.XML_ERROR_INVALID_TOKEN]:
             # might be a URL outside the xml
             while len(nfo_data) > err.lineno:
                 if len(nfo_data[-1]) == 0:

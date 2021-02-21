@@ -106,7 +106,7 @@ class Video(Plugin):
         json_config['count'] = count
         handler.send_json(json.dumps(json_config))
 
-    def GetTransferStatus(selfself, handler, query):
+    def GetTransferStatus(self, handler, query):
         """
         HTTP command handler to return the status of current uploads to TiVos
         as a json object

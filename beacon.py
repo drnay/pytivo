@@ -23,7 +23,7 @@ def bytes2str(data):
     """
     Convert bytes to str as utf-8. sequence values (and keys) will also be converted.
     """
-    # pylint: disable=bad-whitespace,multiple-statements
+    # pylint: disable=multiple-statements
 
     if isinstance(data, bytes):  return data.decode('utf-8')
     if isinstance(data, dict):   return dict(map(bytes2str, data.items()))
@@ -44,7 +44,7 @@ def log_serviceinfo(logger, info):
         log_level = logging.INFO
 
         log_info = {'name': info.name,
-                    'address': socket.inet_ntoa(info.address),
+                    'address': socket.inet_ntoa(info.addresses[0]),
                     'port': info.port}
         log_hdr = "\n  {address}:{port} {name}\n"
         log_fmt = log_hdr
@@ -69,14 +69,23 @@ def log_serviceinfo(logger, info):
 class ZCListener:
     # pylint: disable=redefined-builtin
 
-    def __init__(self, names):
+    def __init__(self, names, logger=None):
         self.names = names
+        self.logger = logger
 
-    def remove_service(self, server, type, name):
-        self.names.remove(name.replace('.' + type, ''))
+    def remove_service(self, server, type_, name):
+        self.names.remove(name.replace('.' + type_, ''))
 
-    def add_service(self, server, type, name):
-        self.names.append(name.replace('.' + type, ''))
+    def add_service(self, server, type_, name):
+        self.names.append(name.replace('.' + type_, ''))
+
+    def update_service(self, server, type_, name):
+        # method is required, but can be ignored if you don't care about updates. We don't.
+        if self.logger is not None:
+            # ex. WARNING:pyTivo.beacon:ZCListener.update_service name='Movies._tivo-videos._tcp.local.' type_='_tivo-videos._tcp.local.'
+            #     WARNING:pyTivo.beacon:ZCListener.update_service name='LivingRoomVox._tivo-videos._tcp.local.' type_='_tivo-videos._tcp.local.'
+            self.logger.debug(f'ZCListener.update_service {name=} {type_=}')
+
 
 class ZCBroadcast:
     def __init__(self, logger):
@@ -129,7 +138,7 @@ class ZCBroadcast:
 
                 info = zeroconf.ServiceInfo('_%s._tcp.local.' % tt,
                                             '%s._%s._tcp.local.' % (title, tt),
-                                            address, port, 0, 0, desc)
+                                            port=port, addresses=[address], properties=desc)
 
                 log_serviceinfo(self.logger, info)
                 self.rz.register_service(info)
@@ -144,7 +153,7 @@ class ZCBroadcast:
         self.logger.info('Scanning for TiVos...\n')
 
         # Get the names of servers offering TiVo videos
-        browser = zeroconf.ServiceBrowser(self.rz, VIDS, None, ZCListener(names))
+        browser = zeroconf.ServiceBrowser(self.rz, VIDS, None, ZCListener(names, logger=self.logger))
 
         # Give them a second (or more if no one has responded in the 1st second) to respond
         time.sleep(1)
@@ -164,13 +173,17 @@ class ZCBroadcast:
             log_serviceinfo(self.logger, info)
 
             if info:
+                # zeroconf v2.7 removed ServiceInfo address member says use addresses instead.
+                # Some debug logging to see if there is always at least the currently assumed 1 address (and maybe more?)
+                self.logger.debug(f'Found zeroconf.ServiceInfo with {len(info.addresses)} IP addresses\n')
+
                 tsn = info.properties.get(b'TSN')
                 if config.get_togo('all'):
                     tsn = info.properties.get(b'tsn', tsn)
                 if tsn:
                     if isinstance(tsn, bytes):
                         tsn = tsn.decode('utf-8')
-                    address = socket.inet_ntoa(info.address)
+                    address = socket.inet_ntoa(info.addresses[0])
                     port = info.port
                     config.tivos[tsn] = {'name': name, 'address': address,
                                          'port': port}

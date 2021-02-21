@@ -383,7 +383,6 @@ def get_tsn(name, tsn=None, raw=False):
 # For example, 2K==2000, 2Ki==2048, 2MB==16000000, 2MiB==16777216
 # Algorithm: http://svn.mplayerhq.hu/ffmpeg/trunk/libavcodec/eval.c
 def strtod(value):
-    # pylint: disable=bad-whitespace
     prefixes = {'y': -24, 'z': -21, 'a': -18, 'f': -15, 'p': -12,
                 'n': -9,  'u': -6,  'm': -3,  'c': -2,  'd': -1,
                 'h': 2,   'k': 3,   'K': 3,   'M': 6,   'G': 9,

@@ -10,7 +10,6 @@ import pytz
 
 # I want to line up the values in dicts, lists and tuples such as
 # the ShowInfo.FieldInfo default_val in metafields so:
-# pylint: disable=bad-whitespace
 
 # Various TV ratings strings associated with their rating value
 TV_RATINGS = {1: ('Y7',    'TV-Y7', 'X1',    'TVY7'),
