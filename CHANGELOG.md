@@ -1,5 +1,30 @@
 # Change Log
 
+## [2.6.2] - 2021-02-22
+
+update for python 3.9 and latest dependency package versions
+
+### Fixed
+
+- pylint removed bad-whitespace error. see [whatsnew 2.6](https://pylint.pycqa.org/en/latest/whatsnew/2.6.html)
+- updating [zeroconf](https://github.com/jstasiak/python-zeroconf) (also see
+  [latest docs](https://python-zeroconf.readthedocs.io/en/latest/api.html))
+  from 0.24 to 0.28 required several changes in beacon.py
+    - ServiceInfo address member was deprecated and then removed, addresses should now be used
+    - ServiceInfo ctor argument order changed, and address was replaced by addresses
+    - ServiceListeners will soon require an update_service method although it may do nothing
+- python 3.9 plistlib module has removed the old API. It's used by metadata in a section of code
+  that I do not think has ever been tested by me after updated from python 2 to 3. I've updated
+  the code as I believe is needed, but it is *still* untested.
+  see [python docs 3.5 plistlib](https://docs.python.org/3.5/library/plistlib.html)
+- python 3.9 xml.xmlparser expat is giving errors (I'm not totally sure these errors didn't
+  exist before). Some googling also made me believe in this instance the pylint errors may
+  be false positives.
+    - `metadata.py:608:23: E1101: Instance of 'module' has no 'codes' member (no-member)`
+    - `metadata.py:608:42: E1101: Instance of 'module' has no 'XML_ERROR_INVALID_TOKEN' member (no-member)`
+- fixed a typo error in plugins/video/video.py
+
+
 ## [2.6.1] - 2020-02-23
 
 ### Fixed
