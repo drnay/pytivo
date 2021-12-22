@@ -4,6 +4,7 @@ import subprocess
 import time
 import struct
 import sys
+from operator import itemgetter
 from functools import reduce
 from threading import Thread
 from datetime import datetime
@@ -302,12 +303,19 @@ class TivoDownload(Thread):
         if not retry_download:
             with lock:
                 status['finished'] = True
-                best_attempt = status['download_attempts'][status['best_attempt_index']]
-                best_error_count = best_attempt['error_packet_count']
+                # if rejected everything, do not handle the best attempt
+                best_attempt = status['download_attempts'][status['best_attempt_index']] if status['best_attempt_index'] else None
+                best_error_count = best_attempt['error_packet_count'] if best_attempt else 0
+                best_file = status['best_file']
 
             self.write_syncerr_log()
 
             if best_error_count > 0:
+                if save_fn:
+                    new_save_fn = best_file + '.txt'
+                    os.rename(save_fn, new_save_fn)
+                    logger.debug('Metadata TXT file renamed: %s', new_save_fn)
+
                 best_error_packets = best_attempt['error_packets']
                 logger.info('[{timestamp:%d/%b/%Y %H:%M:%S}] Done (with errors: '
                             '{epackets} packets in {esections} pieces (largest: {elargest}); '
@@ -470,10 +478,16 @@ class TivoDownload(Thread):
             tivo_name = self.tivo_tasks['tivo_name']
             outfile = status['outfile']
             download_attempts = status['download_attempts']
-            best_ndx = status['best_attempt_index']
-            best_attempt = download_attempts[best_ndx]
+            best_file = status['best_file']
+            if best_file:
+                best_attempt_number = status['best_attempt_index'] + 1
+                best_attempt = download_attempts[best_attempt_number - 1]
+                best_size = best_attempt['size']
+            else:
+                best_attempt_number = None
+                best_size = None
+                best_attempt = min(download_attempts, key=itemgetter('error_packet_count'))
 
-        best_size = best_attempt['size']
         best_start_time = best_attempt['start_time']
         best_error_packet_count = best_attempt['error_packet_count']
 
@@ -491,11 +505,11 @@ class TivoDownload(Thread):
             txt_f.write('%YAML 1.2\n---\n')
 
             # General Info
-            txt_f.write('{:<20}: "{}"\n'.format('fileName', os.path.split(outfile)[1]))
+            txt_f.write('{:<20}: "{}"\n'.format('fileName', best_file))
             txt_f.write('{:<20}: {}\n'.format('fileSize', best_size))
             txt_f.write('{:<20}: {} ({})\n'.format('tivoName', tivo_name, self.tivoIP))
             txt_f.write('{:<20}: {:%Y-%m-%dT%H:%M:%SZ}\n'.format('downloadStarted', datetime.utcfromtimestamp(best_start_time)))
-            txt_f.write('{:<20}: {}\n'.format('attemptSaved', best_ndx + 1))
+            txt_f.write('{:<20}: {}\n'.format('attemptSaved', best_attempt_number))
             txt_f.write('{:<20}: {}\n'.format('totalErrorPackets', best_error_packet_count))
 
             # download attempts
