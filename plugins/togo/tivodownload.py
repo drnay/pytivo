@@ -304,7 +304,7 @@ class TivoDownload(Thread):
             with lock:
                 status['finished'] = True
                 # if rejected everything, do not handle the best attempt
-                best_attempt = status['download_attempts'][status['best_attempt_index']] if status['best_attempt_index'] else None
+                best_attempt = status['download_attempts'][status['best_attempt_index']] if status['best_file'] else None
                 best_error_count = best_attempt['error_packet_count'] if best_attempt else 0
                 best_file = status['best_file']
 
