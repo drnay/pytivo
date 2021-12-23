@@ -130,6 +130,9 @@ class TivoDownload(Thread):
         split_dnld_url = urlsplit(dnld_url)
         dnld_qs = parse_qs(split_dnld_url.query)
 
+        # Ensure the destination directory
+        os.makedirs(os.path.dirname(outfile), exist_ok=True)
+
         # Save the metadata file 1st unless it's already there
         # It may not exactly match the final output file name (if that
         # name is adjusted to show errors).
@@ -714,9 +717,7 @@ class Error(Exception):
 #
 
 # Characters to remove from filenames and what to replace them with
-BADCHAR = {'\\': '-',
-           '/': '-',
-           ':': ' -',
+BADCHAR = {':': ' -',
            ';': ',',
            '*': '.',
            '?': '.',
